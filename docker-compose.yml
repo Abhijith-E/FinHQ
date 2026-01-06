@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Frontend - Next.js
   frontend:
@@ -9,15 +7,10 @@ services:
     container_name: fintech_frontend
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
-    command: npm run dev
     networks:
       - fintech_network
 
