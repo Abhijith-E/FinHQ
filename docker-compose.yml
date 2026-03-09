@@ -69,6 +69,7 @@ services:
     restart: always
 
   # Caching & Queue - Redis
+  # Caching & Queue - Redis
   redis:
     image: redis:7-alpine
     container_name: fintech_redis
@@ -80,6 +81,37 @@ services:
       - fintech_network
     restart: always
 
+  # ML Experiment Tracking - MLflow
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.1
+    container_name: fintech_mlflow
+    ports:
+      - "5001:5000"
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+    volumes:
+      - mlflow_data:/mlflow/artifacts
+    depends_on:
+      - db
+    networks:
+      - fintech_network
+
+  # Task Queue Monitor - Flower
+  flower:
+    image: mher/flower
+    container_name: fintech_flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - fintech_network
+
 networks:
   fintech_network:
     driver: bridge
@@ -87,3 +119,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  mlflow_data:

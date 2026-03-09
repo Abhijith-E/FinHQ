@@ -30,3 +30,21 @@ class Comment(Base):
 
     owner = relationship("User", back_populates="comments")
     post = relationship("Post", back_populates="comments")
+
+class Like(Base):
+    __tablename__ = "social_likes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="likes")
+    post = relationship("Post", backref="likes")
+
+class Follow(Base):
+    __tablename__ = "follows"
+
+    follower_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    followed_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

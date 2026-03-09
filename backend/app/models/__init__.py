@@ -1,9 +1,12 @@
 from .user import User
-from .stock import Stock, Price
-from .portfolio import Portfolio, Transaction
-from .strategy import Strategy
-from .order import Order
-from .alert import Alert, Notification
-from .social import Post, Comment
-from .education import Module, Lesson, UserProgress
-
+from .session import UserSession
+from .stock import Stock, OHLCVData, FundamentalData
+from .portfolio import Portfolio, Transaction, Position
+from .strategy import Strategy, BacktestRun
+from .order import Order, Trade
+from .alert import Alert, Notification, AlertHistory
+from .social import Post, Comment, Like, Follow
+from .education import Module, Lesson, UserProgress, Enrollment, Quiz, QuizSubmission
+from .watchlist import Watchlist, WatchlistItem
+from .ml import MLPrediction
+from .news import NewsArticle, NewsSentiment

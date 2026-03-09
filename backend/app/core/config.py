@@ -23,8 +23,15 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_CHANGE_IN_PRODUCTION"
-    ALGORITHM: str = "HS256"
+    ALGORITHM: str = "RS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    
+    # RS256 Keys for JWT (in production these should be loaded from env or secrets manager)
+    # Using a placeholder generation mechanism if not provided
+    PRIVATE_KEY: str = ""
+    PUBLIC_KEY: str = ""
+
 
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env")
 

@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str
 
 class TokenPayload(BaseModel):
@@ -13,6 +14,7 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
     is_superuser: bool = False
     full_name: Optional[str] = None
+    risk_profile: Optional[str] = "medium"
 
 class UserCreate(UserBase):
     password: str

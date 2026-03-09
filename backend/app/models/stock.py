@@ -11,13 +11,17 @@ class Stock(Base):
     name = Column(String, nullable=False)
     sector = Column(String)
     industry = Column(String)
+    exchange = Column(String)
+    market_cap = Column(Float)
+    description = Column(String)
     is_active = Column(Boolean, default=True)
     
-    prices = relationship("Price", back_populates="stock")
+    prices = relationship("OHLCVData", back_populates="stock")
     transactions = relationship("Transaction", back_populates="stock")
+    fundamentals = relationship("FundamentalData", back_populates="stock", uselist=False)
 
-class Price(Base):
-    __tablename__ = "prices"
+class OHLCVData(Base):
+    __tablename__ = "ohlcv_data"
 
     time = Column(DateTime, primary_key=True, index=True)
     stock_id = Column(Integer, ForeignKey("stocks.id"), primary_key=True)
@@ -30,5 +34,23 @@ class Price(Base):
     stock = relationship("Stock", back_populates="prices")
 
     __table_args__ = (
-        Index('idx_price_stock_time', 'stock_id', 'time', unique=True),
+        Index('idx_ohlcv_stock_time', 'stock_id', 'time', unique=True),
     )
+
+class FundamentalData(Base):
+    __tablename__ = "fundamental_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    stock_id = Column(Integer, ForeignKey("stocks.id"), nullable=False, unique=True)
+    pe_ratio = Column(Float)
+    pb_ratio = Column(Float)
+    ps_ratio = Column(Float)
+    ev_ebitda = Column(Float)
+    debt_equity = Column(Float)
+    roe = Column(Float)
+    roa = Column(Float)
+    current_ratio = Column(Float)
+    quick_ratio = Column(Float)
+    health_score = Column(Float)
+
+    stock = relationship("Stock", back_populates="fundamentals")

@@ -39,3 +39,13 @@ class Notification(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="notifications")
+
+class AlertHistory(Base):
+    __tablename__ = "alert_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alert_id = Column(Integer, ForeignKey("alerts.id"), nullable=False)
+    triggered_at = Column(DateTime(timezone=True), server_default=func.now())
+    price_at_trigger = Column(Float, nullable=False)
+
+    alert = relationship("Alert", backref="history")

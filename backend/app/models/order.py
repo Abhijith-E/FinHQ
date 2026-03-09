@@ -35,3 +35,14 @@ class Order(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     owner = relationship("User", back_populates="orders")
+
+class Trade(Base):
+    __tablename__ = "trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    execution_price = Column(Float, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    executed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    order = relationship("Order", backref="trades")

@@ -33,3 +33,15 @@ class Transaction(Base):
     
     portfolio = relationship("Portfolio", back_populates="transactions")
     stock = relationship("Stock", back_populates="transactions")
+
+class Position(Base):
+    __tablename__ = "positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=False)
+    stock_id = Column(Integer, ForeignKey("stocks.id"), nullable=False)
+    quantity = Column(Float, nullable=False, default=0)
+    average_price = Column(Float, nullable=False, default=0)
+    
+    portfolio = relationship("Portfolio", backref="positions")
+    stock = relationship("Stock", backref="positions_ref")

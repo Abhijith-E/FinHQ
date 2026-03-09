@@ -35,3 +35,39 @@ class UserProgress(Base):
 
     owner = relationship("User", back_populates="progress")
     lesson = relationship("Lesson")
+
+class Enrollment(Base):
+    __tablename__ = "enrollments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
+    enrolled_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    user = relationship("User", backref="enrollments")
+    module = relationship("Module", backref="enrollments")
+
+from sqlalchemy.dialects.postgresql import JSONB
+
+class Quiz(Base):
+    __tablename__ = "quizzes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    question = Column(String, nullable=False)
+    options = Column(JSONB, nullable=False) # list of options
+    correct_answer_index = Column(Integer, nullable=False)
+
+    lesson = relationship("Lesson", backref="quizzes")
+
+class QuizSubmission(Base):
+    __tablename__ = "quiz_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    is_correct = Column(Boolean, nullable=False)
+    submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="quiz_submissions")
+    quiz = relationship("Quiz", backref="submissions")
