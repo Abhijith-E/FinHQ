@@ -215,9 +215,9 @@ export function TickerSearch({ value, onChange, className }: TickerSearchProps) 
       try {
         const token = localStorage.getItem("access_token")
         const headers: Record<string, string> = token ? { "Authorization": `Bearer ${token}` } : {}
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-        
-        const res = await fetch(`${API_BASE}/api/v1/stocks/search?q=${encodeURIComponent(searchQuery)}`, {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
+
+        const res = await fetch(`${API_BASE}/stocks/search?q=${encodeURIComponent(searchQuery)}`, {
           headers
         })
         

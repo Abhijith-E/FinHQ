@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isMarketOpen } from "@/lib/market-hours";
 
 interface OrderBookLevel {
     price: number;
@@ -14,10 +15,27 @@ export function OrderBook({ ticker }: { ticker: string }) {
     const { data: session, status } = useSession();
     const [bids, setBids] = useState<OrderBookLevel[]>([]);
     const [asks, setAsks] = useState<OrderBookLevel[]>([]);
-    const [lastPrice, setLastPrice] = useState(0);
+    const [lastPrice, setLastPrice] = useState<number | null>(null);
+    const [marketOpen, setMarketOpen] = useState(isMarketOpen());
 
     useEffect(() => {
         let isMounted = true;
+        const marketOpen = isMarketOpen();
+        setMarketOpen(marketOpen);
+
+        // Check market status every minute
+        const marketCheckInterval = setInterval(() => {
+            const open = isMarketOpen();
+            setMarketOpen(open);
+        }, 60_000);
+
+        // Clear orders when market closed
+        if (!marketOpen) {
+            setBids([]);
+            setAsks([]);
+            setLastPrice(null);
+        }
+
         const generateMockLevels = (startPrice: number, isBid: boolean) => {
             let total = 0;
             return Array.from({ length: 15 }).map((_, i) => {
@@ -29,9 +47,11 @@ export function OrderBook({ ticker }: { ticker: string }) {
         };
 
         const fetchPriceAndSetup = async () => {
+            if (!marketOpen) return; // Don't fetch when market closed
+
             const token = (session as any)?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem("access_token") : null);
             if (status === "loading" || (!session && !token)) return;
-            
+
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/stocks/${ticker}/quote`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -41,39 +61,44 @@ export function OrderBook({ ticker }: { ticker: string }) {
                     const price = data.last_price || data.price || 150;
                     setLastPrice(price);
                     setBids(generateMockLevels(price - 0.5, true));
-                    setAsks(generateMockLevels(price + 0.5, false).reverse()); // Asks shown descending towards spread
+                    setAsks(generateMockLevels(price + 0.5, false).reverse());
                 }
             } catch (err) {}
         };
 
-        fetchPriceAndSetup();
-        const priceInterval = setInterval(fetchPriceAndSetup, 3000);
+        if (marketOpen) {
+            fetchPriceAndSetup();
+            const priceInterval = setInterval(fetchPriceAndSetup, 3000);
 
-        // Jitter function for mock order depth visual effect
-        const jitterInterval = setInterval(() => {
-            if (!isMounted) return;
-            setBids(prev => {
-                if (prev.length === 0) return prev;
-                const newBids = [...prev];
-                const idx = Math.floor(Math.random() * Math.min(5, newBids.length));
-                newBids[idx] = { ...newBids[idx], size: Math.floor(Math.random() * 500) + 10 };
-                return newBids;
-            });
-            setAsks(prev => {
-                if (prev.length === 0) return prev;
-                const newAsks = [...prev];
-                const idx = Math.floor(Math.random() * Math.min(5, newAsks.length));
-                newAsks[idx] = { ...newAsks[idx], size: Math.floor(Math.random() * 500) + 10 };
-                return newAsks;
-            });
-        }, 1000);
+            // Jitter function for mock order depth visual effect - only during market hours
+            const jitterInterval = setInterval(() => {
+                if (!isMounted) return;
+                setBids(prev => {
+                    if (prev.length === 0) return prev;
+                    const newBids = [...prev];
+                    const idx = Math.floor(Math.random() * Math.min(5, newBids.length));
+                    newBids[idx] = { ...newBids[idx], size: Math.floor(Math.random() * 500) + 10 };
+                    return newBids;
+                });
+                setAsks(prev => {
+                    if (prev.length === 0) return prev;
+                    const newAsks = [...prev];
+                    const idx = Math.floor(Math.random() * Math.min(5, newAsks.length));
+                    newAsks[idx] = { ...newAsks[idx], size: Math.floor(Math.random() * 500) + 10 };
+                    return newAsks;
+                });
+            }, 1000);
 
-        return () => {
-            isMounted = false;
-            clearInterval(priceInterval);
-            clearInterval(jitterInterval);
+            return () => {
+                isMounted = false;
+                clearInterval(priceInterval);
+                clearInterval(jitterInterval);
+                clearInterval(marketCheckInterval);
+            };
+        } else {
+            return () => clearInterval(marketCheckInterval);
         }
-    }, [ticker, session, status]);
+    }, [ticker, session, status, marketOpen]);
 
     const maxTotal = Math.max(
         (bids[bids.length - 1]?.total || 0),
@@ -85,10 +110,22 @@ export function OrderBook({ ticker }: { ticker: string }) {
             <CardHeader className="py-2 px-4 border-b border-slate-800/50 bg-[#1a1a1a]">
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex justify-between items-center">
                     <span>Order Book</span>
-                    <span className="text-indigo-500 font-mono">L2 DATA</span>
+                    <span className={`font-mono ${marketOpen ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {marketOpen ? 'L2 DATA ● LIVE' : 'MARKET CLOSED'}
+                    </span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 p-0 flex flex-col min-h-0">
+            <CardContent className="flex-1 p-0 flex flex-col min-h-0 relative">
+
+                {/* Market Closed Overlay */}
+                {!marketOpen && (
+                    <div className="absolute inset-0 bg-[#1a1a1a]/90 z-30 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="text-rose-500 text-2xl font-bold mb-2">MARKET CLOSED</div>
+                            <div className="text-slate-500 text-xs">NSE trading hours: 9:15 AM - 3:30 PM IST</div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Header */}
                 <div className="flex justify-between px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-600 border-b border-slate-800/30">
@@ -99,7 +136,7 @@ export function OrderBook({ ticker }: { ticker: string }) {
 
                 {/* Asks (Sell Orders) - Red */}
                 <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col-reverse">
-                    {asks.slice(-15).map((ask, i) => {
+                    {asks.length > 0 ? asks.slice(-15).map((ask, i) => {
                         const depthRatio = maxTotal > 0 ? (ask.total / maxTotal) * 100 : 0;
                         return (
                             <div key={`ask-${i}`} className="flex justify-between px-4 py-0.5 relative hover:bg-rose-500/10 cursor-crosshair group transition-colors">
@@ -112,21 +149,31 @@ export function OrderBook({ ticker }: { ticker: string }) {
                                 <div className="w-1/3 text-right text-slate-600 z-10 group-hover:text-slate-400">{ask.total}</div>
                             </div>
                         );
-                    })}
+                    }) : (
+                        <div className="flex-1 flex items-center justify-center text-slate-600">
+                            {marketOpen ? "Loading..." : "Market Closed"}
+                        </div>
+                    )}
                 </div>
 
                 {/* Mid Price / Spread Indicator */}
                 <div className="py-4 px-4 flex flex-col items-center justify-center border-y border-slate-800 bg-[#121212] shadow-inner relative z-20">
                     <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-1">Last Executed Price</div>
                     <div className="text-3xl font-black text-white tracking-tighter flex items-end gap-2">
-                        ₹{lastPrice.toFixed(2)}
-                        <span className="text-xs text-emerald-500 mb-1">▲</span>
+                        {lastPrice ? (
+                            <>
+                                ₹{lastPrice.toFixed(2)}
+                                <span className="text-xs text-emerald-500 mb-1">▲</span>
+                            </>
+                        ) : (
+                            <span className="text-slate-600 text-xl">--</span>
+                        )}
                     </div>
                 </div>
 
                 {/* Bids (Buy Orders) - Green */}
                 <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col">
-                    {bids.slice(0, 15).map((bid, i) => {
+                    {bids.length > 0 ? bids.slice(0, 15).map((bid, i) => {
                         const depthRatio = maxTotal > 0 ? (bid.total / maxTotal) * 100 : 0;
                         return (
                             <div key={`bid-${i}`} className="flex justify-between px-4 py-0.5 relative hover:bg-emerald-500/10 cursor-crosshair group transition-colors">
@@ -139,7 +186,11 @@ export function OrderBook({ ticker }: { ticker: string }) {
                                 <div className="w-1/3 text-right text-slate-600 z-10 group-hover:text-slate-400">{bid.total}</div>
                             </div>
                         );
-                    })}
+                    }) : (
+                        <div className="flex-1 flex items-center justify-center text-slate-600">
+                            {marketOpen ? "Loading..." : "Market Closed"}
+                        </div>
+                    )}
                 </div>
 
             </CardContent>

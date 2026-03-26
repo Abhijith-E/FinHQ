@@ -24,7 +24,7 @@ router = APIRouter()
 
 # ─── Non-parametric routes FIRST ────────────────────────────────────────────
 
-@router.get("/search", response_model=List[schemas.Stock])
+@router.get("/search", response_model=List[schemas.StockSummary])
 async def search_stocks(
     q: str = Query(..., min_length=1, description="Search query (ticker or company name)"),
     db: AsyncSession = Depends(get_db),
@@ -44,7 +44,7 @@ async def search_stocks(
     db_tickers = {s.ticker for s in db_stocks}
     q_lower = q.lower()
     extra = [
-        schemas.Stock(
+        schemas.StockSummary(
             id=0,
             ticker=s["ticker"],
             name=s["name"],
@@ -91,7 +91,7 @@ async def get_index_stocks(
     return {"stocks": ALL_INDIAN_STOCKS, "count": len(ALL_INDIAN_STOCKS), "exchange": "NSE+BSE"}
 
 
-@router.get("/", response_model=List[schemas.Stock])
+@router.get("/", response_model=List[schemas.StockSummary])
 async def list_stocks(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user),

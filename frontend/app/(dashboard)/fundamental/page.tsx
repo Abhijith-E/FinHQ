@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { BarChart4, Scaling, ShieldCheck, HeartPulse, LineChart, Target, Building2, Landmark, TrendingUp, RefreshCw, Loader2 } from "lucide-react"
 import { TickerSearch } from "@/components/ticker-search"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 function getAuthHeaders(): Record<string, string> {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
@@ -23,7 +23,7 @@ export default function FundamentalPage() {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/fundamentals`, {
+            const res = await fetch(`${API_BASE}/stocks/${ticker}/fundamentals`, {
                 headers: getAuthHeaders()
             })
             if (!res.ok) throw new Error("Failed to fetch fundamentals")

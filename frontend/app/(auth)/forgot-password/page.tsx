@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Mail, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_BASE}/api/v1/users/forgot-password`, {
+            const res = await fetch(`${API_BASE}/users/forgot-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),

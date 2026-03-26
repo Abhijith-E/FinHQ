@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "react-hot-toast";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -30,7 +30,7 @@ export default function LoginPage() {
             body.append("username", email);
             body.append("password", password);
 
-            const res = await fetch(`${API_BASE}/api/v1/auth/login/access-token`, {
+            const res = await fetch(`${API_BASE}/auth/login/access-token`, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: body.toString(),

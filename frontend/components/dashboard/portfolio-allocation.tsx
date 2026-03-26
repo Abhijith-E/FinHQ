@@ -34,7 +34,7 @@ export function PortfolioAllocation() {
                                 stroke="none"
                             >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-₹{index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer stroke-slate-950 stroke-2" />
+                                    <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer stroke-slate-950 stroke-2" />
                                 ))}
                             </Pie>
                             <Tooltip

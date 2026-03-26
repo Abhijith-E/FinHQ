@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { TickerSearch } from "@/components/ticker-search"
 import { Newspaper, ExternalLink, Calendar, Loader2, Search, RefreshCw } from "lucide-react"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 function getAuthHeaders(): Record<string, string> {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
@@ -46,7 +46,7 @@ export default function NewsPage() {
         else setLoading(true)
         
         try {
-            const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/news`, {
+            const res = await fetch(`${API_BASE}/stocks/${ticker}/news`, {
                 headers: getAuthHeaders()
             })
             

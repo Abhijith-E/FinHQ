@@ -33,7 +33,13 @@ class StockCreate(StockBase):
 
 class Stock(StockBase):
     id: int
-    prices: List[Price] = []
+
+    class Config:
+        from_attributes = True
+
+# Schema for stock listing/search without heavy relationships
+class StockSummary(StockBase):
+    id: int
 
     class Config:
         from_attributes = True

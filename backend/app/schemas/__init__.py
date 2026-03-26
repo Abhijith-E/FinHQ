@@ -1,5 +1,5 @@
 from .user import User, UserCreate, UserUpdate, Token, TokenPayload, Verify2FA, PasswordReset, PasswordResetConfirm
-from .stock import Stock, StockCreate, Price, PriceCreate
+from .stock import Stock, StockCreate, StockSummary, Price, PriceCreate
 from .news import NewsArticle, NewsArticleCreate, NewsSentiment, NewsSentimentCreate
 from .strategy import Strategy, StrategyCreate, StrategyUpdate
 from .order import Order, OrderCreate

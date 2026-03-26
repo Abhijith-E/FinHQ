@@ -8,6 +8,8 @@ from fastapi import HTTPException
 from app import models, schemas
 from app.models.order import OrderStatus, OrderType, OrderSide
 from app.models.portfolio import TransactionType
+from app.models.stock import Stock
+from app.services.stock_data_service import stock_data_service
 from datetime import datetime
 import random
 
@@ -44,39 +46,74 @@ class BrokerService:
     async def place_order(self, db: AsyncSession, order_in: schemas.OrderCreate, user_id: int) -> models.Order:
         """
         Place a market or limit order in paper trading simulation.
-        Market orders are instantly filled; limit orders are queued.
+        Market orders are filled at real market price fetched via yfinance.
+        Limit orders are filled if price is favorable.
         """
         portfolio = await self._get_or_create_portfolio(db, user_id)
-        current_price = await self._get_simulated_price(order_in.ticker)
 
-        # Determine fill price
-        if order_in.type == "MARKET":
+        # Ensure stock exists in database
+        stmt = select(Stock).where(Stock.ticker == order_in.ticker.upper())
+        result = await db.execute(stmt)
+        stock = result.scalars().first()
+        if not stock:
+            # Fetch stock details from yfinance and create locally
+            details = await stock_data_service.fetch_stock_details(order_in.ticker)
+            stock = Stock(
+                ticker=details.get("Symbol", order_in.ticker.upper()),
+                name=details.get("Name", order_in.ticker),
+                sector=details.get("Sector", "N/A"),
+                industry=details.get("Industry", "N/A"),
+                description=details.get("Description", ""),
+                is_active=True
+            )
+            db.add(stock)
+            await db.flush()
+
+        # Get real current price using yfinance (with fallback to simulation)
+        try:
+            quote = await stock_data_service.get_live_quote(order_in.ticker)
+            current_price = quote.get("last") or quote.get("price") or quote.get("bid") or quote.get("ask")
+            if not current_price:
+                raise ValueError("No price in quote")
+        except Exception as e:
+            # Fallback to simulated price if yfinance fails
+            current_price = await self._get_simulated_price(order_in.ticker)
+
+        # Determine fill price and status
+        if order_in.type == OrderType.MARKET:
             fill_price = current_price
             status = OrderStatus.FILLED
-        elif order_in.type == "LIMIT":
-            fill_price = order_in.price or current_price
-            # Fill immediately if limit price is favorable
-            if order_in.side == "BUY" and fill_price >= current_price:
-                status = OrderStatus.FILLED
-            elif order_in.side == "SELL" and fill_price <= current_price:
+        elif order_in.type == OrderType.LIMIT:
+            limit_price = order_in.price
+            if limit_price is None:
+                fill_price = current_price
                 status = OrderStatus.FILLED
             else:
-                status = OrderStatus.PENDING
-                fill_price = None
+                # For BUY: fill if limit >= current (willing to pay at least market)
+                # For SELL: fill if limit <= current (willing to accept at least market)
+                if order_in.side == OrderSide.BUY and limit_price >= current_price:
+                    fill_price = current_price
+                    status = OrderStatus.FILLED
+                elif order_in.side == OrderSide.SELL and limit_price <= current_price:
+                    fill_price = current_price
+                    status = OrderStatus.FILLED
+                else:
+                    status = OrderStatus.PENDING
+                    fill_price = None
         else:
             fill_price = current_price
             status = OrderStatus.FILLED
 
-        # Validate buying power for BUY orders
-        if order_in.side == "BUY" and status == OrderStatus.FILLED:
-            cost = (fill_price or 0) * order_in.quantity
+        # Validate buying power for BUY orders that will fill
+        if order_in.side == OrderSide.BUY and status == OrderStatus.FILLED and fill_price:
+            cost = fill_price * order_in.quantity
             if portfolio.cash_balance < cost:
-                raise HTTPException(status_code=400, detail=f"Insufficient funds. Required: ${cost:.2f}, Available: ${portfolio.cash_balance:.2f}")
+                raise HTTPException(status_code=400, detail=f"Insufficient funds. Required: ₹{cost:.2f}, Available: ₹{portfolio.cash_balance:.2f}")
 
         # Create Order record
         db_order = models.Order(
             user_id=user_id,
-            ticker=order_in.ticker,
+            ticker=order_in.ticker.upper(),
             type=order_in.type,
             side=order_in.side,
             quantity=order_in.quantity,
@@ -88,33 +125,26 @@ class BrokerService:
 
         # If filled, update portfolio positions and cash
         if status == OrderStatus.FILLED and fill_price:
-            await self._update_positions(db, portfolio, order_in, fill_price)
+            await self._update_positions(db, portfolio, order_in, fill_price, stock.id)
 
         await db.commit()
         await db.refresh(db_order)
         return db_order
 
-    async def _update_positions(self, db: AsyncSession, portfolio: models.Portfolio, order_in: schemas.OrderCreate, fill_price: float):
+    async def _update_positions(self, db: AsyncSession, portfolio: models.Portfolio, order_in: schemas.OrderCreate, fill_price: float, stock_id: int):
         """Update portfolio positions and cash balance after a fill."""
-        from app.models.stock import Stock
         from app.models.portfolio import TransactionType
-        
-        # Look up stock_id
-        st_result = await db.execute(select(Stock).where(Stock.ticker == order_in.ticker))
-        stock = st_result.scalars().first()
-        if not stock:
-            raise HTTPException(status_code=404, detail=f"Stock {order_in.ticker} not found in database for portfolio reference")
-        
+
         # Find existing position
         result = await db.execute(
             select(models.Position).where(
                 models.Position.portfolio_id == portfolio.id,
-                models.Position.stock_id == stock.id
+                models.Position.stock_id == stock_id
             )
         )
         position = result.scalars().first()
 
-        if order_in.side == "BUY":
+        if order_in.side == OrderSide.BUY:
             cost = fill_price * order_in.quantity
             portfolio.cash_balance -= cost
 
@@ -126,13 +156,13 @@ class BrokerService:
             else:
                 position = models.Position(
                     portfolio_id=portfolio.id,
-                    stock_id=stock.id,
+                    stock_id=stock_id,
                     quantity=order_in.quantity,
                     average_price=fill_price
                 )
                 db.add(position)
 
-        elif order_in.side == "SELL":
+        elif order_in.side == OrderSide.SELL:
             if not position or position.quantity < order_in.quantity:
                 raise HTTPException(status_code=400, detail="Insufficient shares to sell")
             proceeds = fill_price * order_in.quantity
@@ -144,8 +174,8 @@ class BrokerService:
         # Log a transaction
         transaction = models.Transaction(
             portfolio_id=portfolio.id,
-            stock_id=stock.id,
-            type=TransactionType.BUY.value if order_in.side == "BUY" else TransactionType.SELL.value,
+            stock_id=stock_id,
+            type=TransactionType.BUY.value if order_in.side == OrderSide.BUY else TransactionType.SELL.value,
             quantity=order_in.quantity,
             price=fill_price,
             timestamp=datetime.utcnow()
@@ -160,7 +190,7 @@ class BrokerService:
         return result.scalars().all()
 
     async def get_user_positions(self, db: AsyncSession, user_id: int):
-        """Get current positions with live prices."""
+        """Get current positions with live prices from yfinance."""
         from sqlalchemy.orm import selectinload
         portfolio = await self._get_or_create_portfolio(db, user_id)
         result = await db.execute(
@@ -173,7 +203,15 @@ class BrokerService:
         enriched = []
         for pos in positions:
             ticker = pos.stock.ticker if pos.stock else "UNKNOWN"
-            live_price = await self._get_simulated_price(ticker)
+            # Fetch real-time price with fallback to simulated
+            try:
+                quote = await stock_data_service.get_live_quote(ticker)
+                live_price = quote.get("last") or quote.get("price") or quote.get("bid") or quote.get("ask")
+                if not live_price:
+                    raise ValueError("No price")
+            except Exception:
+                live_price = await self._get_simulated_price(ticker)
+
             unrealized_pnl = (live_price - pos.average_price) * pos.quantity
             enriched.append({
                 "ticker": ticker,

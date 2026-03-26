@@ -50,7 +50,7 @@ const TIMEFRAMES = [
 
 const INDICATOR_OPTIONS = ["sma20", "sma50", "ema20", "rsi", "macd", "bb"]
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ function getAuthHeaders(): Record<string, string> {
 
 async function fetchOHLCV(ticker: string, interval: string, limit: number): Promise<Candle[]> {
     try {
-        const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/ohlcv?interval=${interval}&limit=${limit}`, {
+        const res = await fetch(`${API_BASE}/stocks/${ticker}/ohlcv?interval=${interval}&limit=${limit}`, {
             headers: getAuthHeaders()
         })
         if (!res.ok) throw new Error("OHLCV fetch failed")
@@ -76,7 +76,7 @@ async function fetchOHLCV(ticker: string, interval: string, limit: number): Prom
 
 async function fetchQuote(ticker: string): Promise<Quote | null> {
     try {
-        const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/quote`, { headers: getAuthHeaders() })
+        const res = await fetch(`${API_BASE}/stocks/${ticker}/quote`, { headers: getAuthHeaders() })
         if (!res.ok) throw new Error("Quote fetch failed")
         return res.json()
     } catch {
@@ -88,7 +88,7 @@ async function fetchIndicators(ticker: string, selected: string[]): Promise<Indi
     if (!selected.length) return null
     try {
         const res = await fetch(
-            `${API_BASE}/api/v1/stocks/${ticker}/indicators?indicators=${selected.join(",")}`,
+            `${API_BASE}/stocks/${ticker}/indicators?indicators=${selected.join(",")}`,
             { headers: getAuthHeaders() }
         )
         if (!res.ok) throw new Error("Indicators fetch failed")

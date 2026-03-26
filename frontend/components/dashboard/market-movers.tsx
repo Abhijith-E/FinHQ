@@ -16,7 +16,7 @@ interface MarketMoversData {
     losers: Mover[];
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 function getAuthHeaders(): Record<string, string> {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -36,7 +36,7 @@ export function MarketMovers() {
     const fetchMovers = useCallback(async () => {
         try {
             const headers = getAuthHeaders();
-            const res = await fetch(`${API_BASE}/api/v1/stocks/market-movers`, { headers });
+            const res = await fetch(`${API_BASE}/stocks/market-movers`, { headers });
 
             if (res.status === 401) {
                 setError("Please log in to view market data.");
@@ -45,15 +45,21 @@ export function MarketMovers() {
             }
             if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
-            const json: MarketMoversData = await res.json();
+            const json = await res.json();
 
-            // Validate response has real data
-            if (!json.gainers && !json.losers) throw new Error("Empty response");
+            // Validate response structure
+            if (!json || typeof json !== 'object') {
+                throw new Error("Invalid response format");
+            }
 
-            setData({
-                gainers: json.gainers || [],
-                losers: json.losers || [],
-            });
+            const gainers = Array.isArray(json.gainers) ? json.gainers : [];
+            const losers = Array.isArray(json.losers) ? json.losers : [];
+
+            if (gainers.length === 0 && losers.length === 0) {
+                throw new Error("No market data available");
+            }
+
+            setData({ gainers, losers });
             setError(null);
             setLastUpdated(new Date());
         } catch (e) {

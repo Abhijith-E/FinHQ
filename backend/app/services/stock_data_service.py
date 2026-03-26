@@ -183,6 +183,8 @@ class StockDataService:
                 return {
                     "ticker": ticker.upper(),
                     "last": last,
+                    "last_price": last,  # alias for frontend compatibility
+                    "price": last,      # another alias
                     "bid": round(last * 0.9998, 2),
                     "ask": round(last * 1.0002, 2),
                     "prev_close": prev,
@@ -206,6 +208,8 @@ class StockDataService:
         return {
             "ticker": ticker.upper(),
             "last": last_price,
+            "last_price": last_price,  # alias for frontend
+            "price": last_price,      # alias
             "bid": round(last_price - spread, 2),
             "ask": round(last_price + spread, 2),
             "prev_close": prev_close,

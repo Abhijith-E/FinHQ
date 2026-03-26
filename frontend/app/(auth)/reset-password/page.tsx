@@ -6,7 +6,7 @@ import { Lock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -43,7 +43,7 @@ function ResetPasswordForm() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_BASE}/api/v1/users/reset-password`, {
+            const res = await fetch(`${API_BASE}/users/reset-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token, new_password: password }),

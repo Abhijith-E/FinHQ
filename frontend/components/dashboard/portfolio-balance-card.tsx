@@ -27,12 +27,27 @@ export function PortfolioBalanceCard() {
                  if (res.ok) {
                      const data = await res.json();
                      if (isMounted) {
-                         setBalance(data.total_value || 0);
-                         // sum up all unrealized pnl from positions
-                         const pnl = data.positions ? data.positions.reduce((acc: number, p: any) => acc + (p.unrealized_pnl || 0), 0) : 0;
+                         // Validate data structure
+                         const totalValue = data && typeof data === 'object' && typeof data.total_value === 'number'
+                             ? data.total_value
+                             : 0;
+
+                         const positions = data && typeof data === 'object' && Array.isArray(data.positions)
+                             ? data.positions
+                             : [];
+
+                         const pnl = positions.reduce((acc: number, p: any) => {
+                             const pnlVal = typeof p.unrealized_pnl === 'number' ? p.unrealized_pnl : 0;
+                             return acc + pnlVal;
+                         }, 0);
+
+                         setBalance(totalValue);
                          setUnrealizedPnl(pnl);
                          setIsLoading(false);
                      }
+                 } else {
+                     console.error("Portfolio fetch failed:", res.status, res.statusText);
+                     if (isMounted) setIsLoading(false);
                  }
              } catch (err) {
                  console.error("Failed to fetch portfolio", err);
