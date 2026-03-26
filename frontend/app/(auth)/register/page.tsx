@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Mail, Lock, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength";
 
 type Step = 1 | 2 | 3;
 
@@ -13,6 +14,7 @@ export default function RegisterPage() {
     const [step, setStep] = useState<Step>(1);
     const [loading, setLoading] = useState(false);
 
+    const [isPasswordStrong, setIsPasswordStrong] = useState(false);
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -25,11 +27,21 @@ export default function RegisterPage() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const isValidPassword = (pwd: string) => {
+        return pwd.length >= 14 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /\d/.test(pwd) && /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+    };
+
     const nextStep = () => setStep((s) => (s + 1) as Step);
     const prevStep = () => setStep((s) => (s - 1) as Step);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (step === 2 && !isValidPassword(formData.password)) {
+            toast.error("Please ensure your password meets all strength criteria.");
+            return;
+        }
+
         if (step < 3) {
             nextStep();
             return;
@@ -158,22 +170,18 @@ export default function RegisterPage() {
                                     name="password"
                                     type="password"
                                     required
-                                    minLength={8}
                                     value={formData.password}
                                     onChange={handleChange}
                                     className="block w-full pl-10 pr-3 py-3 border border-slate-700 rounded-xl bg-slate-800/50 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-sm"
-                                    placeholder="Min. 8 characters"
+                                    placeholder="Enter your password"
                                 />
                             </div>
                         </div>
                         <div className="p-4 bg-slate-800/60 rounded-xl border border-slate-700/80">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Requirements</p>
-                            {["At least 8 characters", "One uppercase letter", "One number or special character"].map((req) => (
-                                <div key={req} className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-600 flex-shrink-0" />
-                                    {req}
-                                </div>
-                            ))}
+                            <PasswordStrengthMeter 
+                                password={formData.password} 
+                                onStrengthChange={setIsPasswordStrong}
+                            />
                         </div>
                     </div>
                 )}
@@ -224,7 +232,7 @@ export default function RegisterPage() {
                     )}
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || (step === 2 && !isPasswordStrong)}
                         className={`${step > 1 ? "flex-[2]" : "w-full"} flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed group`}
                     >
                         <span className="flex items-center gap-2">

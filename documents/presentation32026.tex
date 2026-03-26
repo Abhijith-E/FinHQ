@@ -1,0 +1,205 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\title{FintechHQ Presentation 3}
+\subtitle{Complete end-to-end walkthrough from project motivation to future scope}
+\author{Generated Documentation Source}
+\date{2026-03-25}
+\begin{document}
+\begin{frame}
+\titlepage
+\end{frame}
+\begin{frame}{Title Slide}
+\begin{itemize}
+\item Project: FintechHQ
+\item AI-Enabled Financial Intelligence, Analytics, and Paper Trading Platform
+\item 2026 presentation edition
+\end{itemize}
+\end{frame}
+\begin{frame}{Project Vision}
+\begin{itemize}
+\item Build a unified fintech platform for secure access, market research, AI analytics, and paper trading.
+\item Reduce fragmentation between charting, fundamentals, news, alerts, learning, and strategy testing.
+\item Provide an extensible academic and engineering foundation rather than a single-purpose demo.
+\end{itemize}
+\end{frame}
+\begin{frame}{System Architecture}
+\begin{itemize}
+\item Next.js 16 frontend with React 19, TypeScript, Tailwind CSS, Radix UI primitives, Recharts, Zustand, Framer Motion, and lightweight-charts for interactive market visualization.
+\item FastAPI backend that exposes versioned REST APIs for authentication, user management, stocks, strategies, trading, alerts, community, and education workflows.
+\item Dedicated FastAPI ML microservice that handles feature engineering, price prediction, recommendation, risk analytics, fundamental analysis, backtesting, sentiment scoring, and AI chart-pattern detection.
+\item PostgreSQL with TimescaleDB-style time-series usage for market and OHLCV storage, supported by Alembic migrations and SQLAlchemy ORM models.
+\item Redis for caching, fast state lookups, and service-side infrastructure support.
+\item Docker Compose orchestration for frontend, backend, ML service, database, Redis, MLflow, and Flower.
+\end{itemize}
+\end{frame}
+\begin{frame}{Technology Stack}
+\begin{itemize}
+\item Frontend: Next.js 16 app router, React 19 and TypeScript, Tailwind CSS 4, Radix UI and shadcn-style components, Recharts and lightweight-charts, NextAuth scaffold and local token storage flow, Framer Motion and tsparticles for interactive UI polish
+\item Backend: FastAPI, SQLAlchemy 2 async ORM, Alembic migrations, PostgreSQL / TimescaleDB usage pattern, Redis, python-jose for JWT handling, passlib with Argon2, sha256\_crypt, and bcrypt support, slowapi for rate limiting, yfinance, pandas, numpy, ta
+\item ML Service: FastAPI ML microservice, PyTorch, scikit-learn, transformers, MLflow, OpenCV headless, Pillow, mplfinance, SciPy and custom algorithmic signal processing
+\item DevOps: Docker Compose, Dockerfiles per service, MLflow tracking container, Flower monitoring container, Container networking and mounted development volumes
+\end{itemize}
+\end{frame}
+\begin{frame}{Authentication and Security}
+\begin{itemize}
+\item Access and refresh JWT tokens with explicit token type claims.
+\item Argon2 password hashing with compatibility fallbacks for legacy hash migration.
+\item Password policy requiring length, mixed case, numerics, and special characters.
+\item Breached-password screening using HaveIBeenPwned k-anonymity API logic.
+\item Failed-login tracking and temporary account lockout after repeated failures.
+\item User session recording with device fingerprint and IP address capture.
+\end{itemize}
+\end{frame}
+\begin{frame}{Frontend Modules}
+\begin{itemize}
+\item Auth screens for login, register, password reset, and 2FA setup.
+\item Dashboard, portfolio, technical analysis, fundamentals, news, trading, strategies, backtest, risk, alerts, community, and learning routes.
+\item Reusable UI widgets including charts, ticker search, password strength meter, order book, and dashboard cards.
+\end{itemize}
+\end{frame}
+\begin{frame}{Backend Modules}
+\begin{itemize}
+\item Versioned routers for auth, users, stocks, trading, strategies, alerts, social, and education.
+\item Service layer for alerts, broker simulation, stock data, education, and social flows.
+\item WebSocket layer for price, portfolio, and alert channels.
+\end{itemize}
+\end{frame}
+\begin{frame}{ML and AI Modules}
+\begin{itemize}
+\item Feature engineering, risk analytics, LSTM forecasting, recommendation engine, and sentiment analysis.
+\item Fundamental scoring and DCF-style valuation support.
+\item Algorithmic plus CNN-transformer chart-pattern detection with annotation pipeline.
+\end{itemize}
+\end{frame}
+\begin{frame}{Detailed Data Model}
+\begin{itemize}
+\item User: Identity, account status, risk profile, verification state, lockouts, timestamps, and security relationships.
+\item PasswordHistory: Tracks previous password hashes to block reuse.
+\item UserSession: Stores per-device session tokens, expiry, fingerprint, and IP metadata.
+\item Stock / OHLCVData / FundamentalData: Market master data, historical candles, and stored fundamentals.
+\item Portfolio / Position / Transaction: Cash balance, holdings, and transaction ledger for paper trading.
+\item Order / Trade: Orders, execution status, fills, and trading activity.
+\item Strategy / BacktestRun: User-defined strategies and simulation results.
+\item Alert / Notification / AlertHistory: Threshold definitions, user alerts, read-state tracking, and trigger logs.
+\item Post / Comment / Like / Follow: Community interaction graph and social feed data.
+\item Module / Lesson / UserProgress / Enrollment / Quiz / QuizSubmission: Learning management and progress tracking.
+\item Watchlist / WatchlistItem: User-defined monitoring lists.
+\item MLPrediction / NewsArticle / NewsSentiment: Predictive outputs and enriched news records.
+\end{itemize}
+\end{frame}
+\begin{frame}{Backend API Catalog}
+\begin{itemize}
+\item /api/v1/auth/register: Registers a user after uniqueness checks, password policy validation, breach screening, and password-history initialization.
+\item /api/v1/auth/login/access-token: Authenticates users, enforces lockouts, supports 2FA branching, and issues access plus refresh tokens.
+\item /api/v1/auth/login/verify-2fa: Completes a TOTP-based login challenge and opens a real session.
+\item /api/v1/auth/refresh: Refreshes access tokens using refresh-token semantics.
+\item /api/v1/auth/2fa/setup: Generates a TOTP secret and provisioning URI.
+\item /api/v1/auth/2fa/verify: Finalizes 2FA setup.
+\item /api/v1/users/me: Returns the authenticated user profile.
+\item /api/v1/users/forgot-password: Generates a reset token with demo-mode response behavior.
+\item /api/v1/users/reset-password: Validates reset token, enforces password rules, blocks reuse, and invalidates sessions.
+\item /api/v1/stocks/search: Searches stored stocks and supplements results from the curated Indian stock universe.
+\item /api/v1/stocks/market-movers: Returns gainers and losers using live or fallback data.
+\item /api/v1/stocks/index-stocks: Supplies Nifty, Sensex, or combined symbol catalogs.
+\item /api/v1/stocks/\{ticker\}: Returns or hydrates stock master information.
+\item /api/v1/stocks/\{ticker\}/ohlcv: Provides candle data from DB or live provider fallback.
+\item /api/v1/stocks/\{ticker\}/indicators: Calculates SMA, EMA, RSI, MACD, and Bollinger Bands server-side.
+\end{itemize}
+\end{frame}
+\begin{frame}{Extended Backend API Catalog}
+\begin{itemize}
+\item /api/v1/stocks/\{ticker\}/quote: Supplies latest quote data.
+\item /api/v1/stocks/\{ticker\}/fundamentals: Returns fundamentals and valuation-oriented data.
+\item /api/v1/stocks/\{ticker\}/news: Fetches and sentiment-enriches asset-level news.
+\item /api/v1/trading/orders: Places or lists paper-trading orders.
+\item /api/v1/trading/orders/\{order\_id\}: Cancels pending paper orders.
+\item /api/v1/trading/positions: Returns holdings enriched with simulated live prices.
+\item /api/v1/trading/portfolio/summary: Provides aggregate portfolio values.
+\item /api/v1/alerts: Creates, lists, and deletes alerts.
+\item /api/v1/alerts/notifications: Lists and marks notifications as read.
+\item /api/v1/strategies: Lists, creates, and deletes strategy definitions.
+\item /api/v1/social/feed: Returns social feed content.
+\item /api/v1/social/posts: Creates community posts.
+\item /api/v1/social/posts/\{id\}/comments: Adds comments to community posts.
+\item /api/v1/education/seed: Seeds learning content.
+\item /api/v1/education/modules: Lists modules and learning state.
+\item /api/v1/education/lessons/\{id\}/complete: Marks lessons complete.
+\end{itemize}
+\end{frame}
+\begin{frame}{ML API Catalog}
+\begin{itemize}
+\item /api/v1/features/calculate: Generates technical features, candlestick patterns, and support/resistance levels.
+\item /api/v1/training/train: Runs model-training related workflows.
+\item /api/v1/sentiment/predict: Scores text sentiment for financial context.
+\item /api/v1/prediction/train: Trains an LSTM-based price model.
+\item /api/v1/prediction/forecast: Forecasts the next price from recent history.
+\item /api/v1/recommendation/analyze: Produces a recommendation from price behavior and optional news text.
+\item /api/v1/technical/analyze: Runs technical-analysis logic for chart-based insight.
+\item /api/v1/risk/analyze: Calculates portfolio risk metrics from holdings and history.
+\item /api/v1/fundamental/analyze: Computes DCF and health-score outputs.
+\item /api/v1/backtest/run: Executes a simplified backtesting routine.
+\item /api/v1/pattern-detection/detect-from-data: Runs ensemble pattern detection and optionally returns annotated charts.
+\item /api/v1/pattern-detection/detect-image: Placeholder image-based path pending trained vision weights.
+\item /api/v1/pattern-detection/patterns-history: Returns stored detection history.
+\item /api/v1/pattern-detection/supported-patterns: Lists supported classical chart patterns.
+\end{itemize}
+\end{frame}
+\begin{frame}{Implementation Honesty}
+\begin{itemize}
+\item The codebase contains a mix of production-style backend services and UI screens that are either API-integrated or still backed by representative mock data.
+\item Authentication, password reset, stock search, quotes, OHLCV retrieval, indicator calculation, alerts, community posting, education seeding, and several ML endpoints are implemented as concrete service flows.
+\item Some screens such as portfolio, trade, risk, and backtest currently render realistic demo data in the frontend while the backend and ML layers already expose foundations for fuller integration.
+\item The project uses legacy naming in places such as 'FinTech AI Platform' and older repository documents; this document set standardizes the academic/project title as FintechHQ, as requested.
+\item Several UI pages still render mock or staged data even though backend service foundations are present.
+\item Reset-password flow exposes a reset token in the response for demo convenience and should not do so in production.
+\item The 2FA setup page currently uses mocked frontend data rather than invoking the real backend setup endpoint.
+\end{itemize}
+\end{frame}
+\begin{frame}{Academic Takeaways}
+\begin{itemize}
+\item The project demonstrates domain modeling, full-stack architecture, security engineering, and AI integration in one codebase.
+\item It exposes realistic engineering trade-offs between live features and staged UI scaffolds.
+\item It is well suited for capstone reporting, professional documentation, and future commercialization paths.
+\end{itemize}
+\end{frame}
+\begin{frame}{User Workflows}
+\begin{itemize}
+\item User onboarding: A user registers with strong credentials, optionally configures 2FA, receives tokens, and enters the dashboard.
+\item Market research: The user searches Indian symbols, loads OHLCV data, studies indicators, checks quotes, reads news, and explores fundamentals.
+\item Technical analysis: The technical-analysis screen fetches candles, indicator overlays, quotes, and ML-backed chart-pattern findings.
+\item Paper trading: Trading logic validates buying power, updates positions, records transactions, and maintains order state.
+\end{itemize}
+\end{frame}
+\begin{frame}{Current Maturity}
+\begin{itemize}
+\item The codebase contains a mix of production-style backend services and UI screens that are either API-integrated or still backed by representative mock data.
+\item Authentication, password reset, stock search, quotes, OHLCV retrieval, indicator calculation, alerts, community posting, education seeding, and several ML endpoints are implemented as concrete service flows.
+\item Some screens such as portfolio, trade, risk, and backtest currently render realistic demo data in the frontend while the backend and ML layers already expose foundations for fuller integration.
+\item The project uses legacy naming in places such as 'FinTech AI Platform' and older repository documents; this document set standardizes the academic/project title as FintechHQ, as requested.
+\end{itemize}
+\end{frame}
+\begin{frame}{Limitations and Risks}
+\begin{itemize}
+\item Several UI pages still render mock or staged data even though backend service foundations are present.
+\item Reset-password flow exposes a reset token in the response for demo convenience and should not do so in production.
+\item The 2FA setup page currently uses mocked frontend data rather than invoking the real backend setup endpoint.
+\item The backend configuration defines an RS256 label, while token creation and decode helpers currently use HS256 symmetric signing internally.
+\item Real broker integration is not implemented; trading is a paper-trading simulation.
+\item Pattern image detection depends on trained YOLO or related weights and currently documents that limitation in the API response.
+\end{itemize}
+\end{frame}
+\begin{frame}{Future Scope}
+\begin{itemize}
+\item Live broker integration and fully wired frontend modules.
+\item Improved model lifecycle, experiment tracking, and validation.
+\item Production-grade secrets, observability, and cloud deployment.
+\end{itemize}
+\end{frame}
+\begin{frame}{Conclusion}
+\begin{itemize}
+\item FintechHQ already demonstrates strong breadth across fintech, AI, and security engineering.
+\item Its modular design supports future growth without major architectural replacement.
+\item The project is suitable for academic presentation, viva, and technical review.
+\end{itemize}
+\end{frame}
+\end{document}

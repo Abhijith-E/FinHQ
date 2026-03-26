@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import features, training, sentiment, prediction, recommendation, technical, risk, fundamental, backtest
+from app.api.v1.endpoints import (
+    features, training, sentiment, prediction, recommendation,
+    technical, risk, fundamental, backtest, pattern_detection,
+)
 
 
 
@@ -35,6 +38,8 @@ app.include_router(technical.router, prefix="/api/v1/technical", tags=["technica
 app.include_router(risk.router, prefix="/api/v1/risk", tags=["risk"])
 app.include_router(fundamental.router, prefix="/api/v1/fundamental", tags=["fundamental"])
 app.include_router(backtest.router, prefix="/api/v1/backtest", tags=["backtest"])
+app.include_router(pattern_detection.router, prefix="/api/v1/pattern-detection", tags=["AI Pattern Detection"])
+
 
 
 

@@ -6,8 +6,8 @@ from app.services.risk_service import risk_service
 router = APIRouter()
 
 class RiskRequest(BaseModel):
-    holdings: List[Dict[str, Any]] # e.g. [{"ticker": "AAPL", "value": 1000}, ...]
-    history_data: Dict[str, List[Any]] # e.g. {"AAPL": [{...}, ...], ...}
+    holdings: List[Dict[str, Any]] # e.g. [{"ticker": "RELIANCE.NS", "value": 1000}, ...]
+    history_data: Dict[str, List[Any]] # e.g. {"RELIANCE.NS": [{...}, ...], ...}
 
 @router.post("/analyze")
 async def analyze_risk(request: RiskRequest):

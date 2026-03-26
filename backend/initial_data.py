@@ -7,37 +7,46 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from app.db.session import AsyncSessionLocal
 from app.models.stock import Stock
-
-INITIAL_STOCKS = [
-    {"ticker": "AAPL", "name": "Apple Inc.", "sector": "Technology", "industry": "Consumer Electronics"},
-    {"ticker": "MSFT", "name": "Microsoft Corporation", "sector": "Technology", "industry": "Software - Infrastructure"},
-    {"ticker": "GOOGL", "name": "Alphabet Inc.", "sector": "Technology", "industry": "Internet Content & Information"},
-    {"ticker": "AMZN", "name": "Amazon.com Inc.", "sector": "Consumer Cyclical", "industry": "Internet Retail"},
-    {"ticker": "TSLA", "name": "Tesla Inc.", "sector": "Consumer Cyclical", "industry": "Auto Manufacturers"},
-    {"ticker": "NVDA", "name": "NVIDIA Corporation", "sector": "Technology", "industry": "Semiconductors"},
-    {"ticker": "META", "name": "Meta Platforms Inc.", "sector": "Technology", "industry": "Internet Content & Information"},
-    {"ticker": "BRK.B", "name": "Berkshire Hathaway Inc.", "sector": "Financial Services", "industry": "Insurance - Diversified"},
-    {"ticker": "JPM", "name": "JPMorgan Chase & Co.", "sector": "Financial Services", "industry": "Banks - Diversified"},
-    {"ticker": "V", "name": "Visa Inc.", "sector": "Financial Services", "industry": "Credit Services"},
-]
+from app.core.indian_stocks import ALL_INDIAN_STOCKS
 
 async def seed_data():
     async with AsyncSessionLocal() as db:
-        print("Seeding stocks...")
-        for stock_data in INITIAL_STOCKS:
-            # Check if exists
-            from sqlalchemy import select
+        from sqlalchemy import select
+        print(f"🚀 Seeding {len(ALL_INDIAN_STOCKS)} Indian stocks (Nifty 100 + Sensex)...")
+        added = 0
+        updated = 0
+        skipped = 0
+        
+        for stock_data in ALL_INDIAN_STOCKS:
             result = await db.execute(select(Stock).where(Stock.ticker == stock_data["ticker"]))
             stock = result.scalars().first()
-            
+
             if not stock:
-                new_stock = Stock(**stock_data)
+                new_stock = Stock(
+                    ticker=stock_data["ticker"],
+                    name=stock_data["name"],
+                    sector=stock_data["sector"],
+                    industry=stock_data["industry"],
+                    is_active=True,
+                )
                 db.add(new_stock)
-                print(f"Added {stock_data['ticker']}")
+                added += 1
             else:
-                print(f"Skipping {stock_data['ticker']} (already exists)")
-        
+                # Update existing if needed (ensure name/sector match)
+                if stock.name != stock_data["name"] or stock.sector != stock_data.get("sector"):
+                    stock.name = stock_data["name"]
+                    stock.sector = stock_data.get("sector", "N/A")
+                    stock.industry = stock_data.get("industry", "N/A")
+                    updated += 1
+                else:
+                    skipped += 1
+
         await db.commit()
+        print(f"✅ Seeding Complete!")
+        print(f"   - {added} stocks created")
+        print(f"   - {updated} stocks updated")
+        print(f"   - {skipped} stocks already up-to-date")
+
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

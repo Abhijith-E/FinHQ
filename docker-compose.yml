@@ -7,10 +7,16 @@ services:
     container_name: fintech_frontend
     ports:
       - "3000:3000"
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_ML_SERVICE_URL=http://localhost:8001   # AI Pattern Detection
     depends_on:
       - backend
+      - ml-service
     networks:
       - fintech_network
 
@@ -33,7 +39,7 @@ services:
     networks:
       - fintech_network
 
-  # ML Service - FastAPI (AI/ML)
+  # ML Service - FastAPI (AI/ML) + Pattern Detection Engine
   ml-service:
     build:
       context: ./ml-service
@@ -43,9 +49,12 @@ services:
       - "8001:8001"
     volumes:
       - ./ml-service:/app
+      - ml_models:/app/models    # persist trained weights across rebuilds
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/fintech_db
       - REDIS_URL=redis://redis:6379/0
+      - PATTERN_MODEL_PATH=/app/models/cnn_transformer_best.pt
+      - YOLO_MODEL_PATH=/app/models/yolo_best.pt
     depends_on:
       - db
       - redis
@@ -68,7 +77,6 @@ services:
       - fintech_network
     restart: always
 
-  # Caching & Queue - Redis
   # Caching & Queue - Redis
   redis:
     image: redis:7-alpine
@@ -120,3 +128,4 @@ volumes:
   postgres_data:
   redis_data:
   mlflow_data:
+  ml_models:       # named volume for persisting trained model weights

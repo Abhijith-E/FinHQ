@@ -77,4 +77,40 @@ class FeatureService:
 
         return patterns
 
+    def calculate_support_resistance(self, data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Identify support and resistance levels from OHLCV data using
+        local extrema and price clustering.
+        """
+        import numpy as np
+        if not data:
+            return {"support": [], "resistance": []}
+
+        df = pd.DataFrame(data)
+        for col in ['high', 'low', 'close']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        highs = df['high'].dropna().values if 'high' in df.columns else np.array([])
+        lows  = df['low'].dropna().values  if 'low'  in df.columns else np.array([])
+
+        if len(highs) == 0 or len(lows) == 0:
+            return {"support": [], "resistance": []}
+
+        # Simple percentile-based levels
+        resistance_levels = [
+            float(np.percentile(highs, 95)),
+            float(np.percentile(highs, 85)),
+            float(np.percentile(highs, 75)),
+        ]
+        support_levels = [
+            float(np.percentile(lows, 5)),
+            float(np.percentile(lows, 15)),
+            float(np.percentile(lows, 25)),
+        ]
+        return {
+            "support":    [round(v, 2) for v in sorted(support_levels)],
+            "resistance": [round(v, 2) for v in sorted(resistance_levels, reverse=True)],
+        }
+
 feature_service = FeatureService()

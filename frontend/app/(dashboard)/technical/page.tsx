@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, TrendingUp, TrendingDown, RefreshCw, BarChart2, Zap, Target } from "lucide-react"
 import ErrorBoundary from "@/components/error-boundary"
+import { TickerSearch } from "@/components/ticker-search"
+import AIPatternDetection from "@/components/ai-pattern-detection"
 
 const TradingChart = dynamic(
     () => import("@/components/trading-chart").then((mod) => mod.TradingChart),
@@ -39,19 +41,6 @@ interface IndicatorResult {
     indicators: Record<string, (number | null)[]>
 }
 
-const TICKER_LIST = [
-    { value: "AAPL", label: "AAPL – Apple Inc." },
-    { value: "MSFT", label: "MSFT – Microsoft Corp." },
-    { value: "NVDA", label: "NVDA – NVIDIA Corp." },
-    { value: "TSLA", label: "TSLA – Tesla Inc." },
-    { value: "GOOGL", label: "GOOGL – Alphabet Inc." },
-    { value: "AMZN", label: "AMZN – Amazon.com" },
-    { value: "META", label: "META – Meta Platforms" },
-    { value: "AMD", label: "AMD – Advanced Micro Devices" },
-    { value: "NFLX", label: "NFLX – Netflix Inc." },
-    { value: "JPM", label: "JPM – JPMorgan Chase" },
-]
-
 const TIMEFRAMES = [
     { label: "15m", interval: "15m", limit: 96 },
     { label: "1H", interval: "1h", limit: 72 },
@@ -63,12 +52,19 @@ const INDICATOR_OPTIONS = ["sma20", "sma50", "ema20", "rsi", "macd", "bb"]
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+// ─── Auth helper ─────────────────────────────────────────────────────────────
+
+function getAuthHeaders(): Record<string, string> {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+    return token ? { "Authorization": `Bearer ${token}` } : {}
+}
+
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
 async function fetchOHLCV(ticker: string, interval: string, limit: number): Promise<Candle[]> {
     try {
         const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/ohlcv?interval=${interval}&limit=${limit}`, {
-            credentials: "include"
+            headers: getAuthHeaders()
         })
         if (!res.ok) throw new Error("OHLCV fetch failed")
         const json = await res.json()
@@ -80,7 +76,7 @@ async function fetchOHLCV(ticker: string, interval: string, limit: number): Prom
 
 async function fetchQuote(ticker: string): Promise<Quote | null> {
     try {
-        const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/quote`, { credentials: "include" })
+        const res = await fetch(`${API_BASE}/api/v1/stocks/${ticker}/quote`, { headers: getAuthHeaders() })
         if (!res.ok) throw new Error("Quote fetch failed")
         return res.json()
     } catch {
@@ -93,9 +89,27 @@ async function fetchIndicators(ticker: string, selected: string[]): Promise<Indi
     try {
         const res = await fetch(
             `${API_BASE}/api/v1/stocks/${ticker}/indicators?indicators=${selected.join(",")}`,
-            { credentials: "include" }
+            { headers: getAuthHeaders() }
         )
         if (!res.ok) throw new Error("Indicators fetch failed")
+        return res.json()
+    } catch {
+        return null
+    }
+}
+
+async function fetchAdvancedPatterns(candles: Candle[]) {
+    if (candles.length < 10) return null
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/technical/analyze`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ data: candles.slice(-100) })
+        })
+        if (!res.ok) throw new Error("Advanced patterns fetch failed")
         return res.json()
     } catch {
         return null
@@ -134,11 +148,21 @@ function getSupportResistance(candles: Candle[]) {
     }
 }
 
+// ─── Support & Resistance ───────────────────────────────────────────────────
+
+function SupportResistanceStyles() {
+    return (
+        <style dangerouslySetInnerHTML={{ __html: `
+            .tv-lightweight-charts-logo { display: none !important; }
+        ` }} />
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TechnicalPage() {
     const [mounted, setMounted] = useState(false)
-    const [ticker, setTicker] = useState("AAPL")
+    const [ticker, setTicker] = useState("RELIANCE.NS")
     const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]) // 1D default
     const [selectedIndicators, setSelectedIndicators] = useState<string[]>(["sma20", "sma50", "rsi"])
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false)
@@ -146,8 +170,11 @@ export default function TechnicalPage() {
     const [candles, setCandles] = useState<Candle[]>([])
     const [quote, setQuote] = useState<Quote | null>(null)
     const [indicatorData, setIndicatorData] = useState<IndicatorResult | null>(null)
+    const [advancedPatterns, setAdvancedPatterns] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+    const [highlightRange, setHighlightRange] = useState<{ from: string | number; to: string | number } | null>(null)
+    const [selectedPattern, setSelectedPattern] = useState<any>(null)
 
     useEffect(() => { setMounted(true) }, [])
 
@@ -161,6 +188,12 @@ export default function TechnicalPage() {
         setCandles(ohlcv)
         setQuote(q)
         setIndicatorData(ind)
+        
+        if (ohlcv && ohlcv.length > 0) {
+            const patterns = await fetchAdvancedPatterns(ohlcv.slice(-100))
+            if (patterns) setAdvancedPatterns(patterns)
+        }
+        
         setLastRefreshed(new Date())
         setLoading(false)
     }, [ticker, timeframe, selectedIndicators])
@@ -213,7 +246,8 @@ export default function TechnicalPage() {
 
     return (
         <ErrorBoundary>
-            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-h-[calc(100vh-60px)] overflow-y-auto">
+            <SupportResistanceStyles />
+            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-h-[calc(100vh-60px)] overflow-y-auto relative">
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
@@ -235,16 +269,10 @@ export default function TechnicalPage() {
                 </div>
 
                 {/* Action Bar */}
-                <div className="flex flex-wrap items-center justify-between bg-slate-900/60 px-4 py-3 rounded-xl border border-slate-800 backdrop-blur-md mb-4 gap-4">
+                <div className="flex flex-wrap items-center justify-between bg-slate-900/60 px-4 py-3 rounded-xl border border-slate-800 backdrop-blur-md mb-4 gap-4 relative z-[500] isolate">
                     <div className="flex items-center gap-4">
                         {/* Ticker Selector */}
-                        <select
-                            value={ticker}
-                            onChange={(e) => setTicker(e.target.value)}
-                            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-1 focus:ring-indigo-500 p-2.5 outline-none w-56"
-                        >
-                            {TICKER_LIST.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
+                        <TickerSearch value={ticker} onChange={(val) => setTicker(val)} />
 
                         {/* Timeframe Buttons */}
                         <div className="flex gap-1 bg-slate-950/60 p-1 rounded-lg border border-slate-800/50">
@@ -264,7 +292,7 @@ export default function TechnicalPage() {
                     </div>
 
                     {/* Indicator Picker */}
-                    <div className="relative">
+                    <div className="relative z-[501]">
                         <button
                             onClick={() => setShowIndicatorMenu(v => !v)}
                             className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 transition-all"
@@ -275,27 +303,35 @@ export default function TechnicalPage() {
                                 <span className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{selectedIndicators.length}</span>
                             )}
                         </button>
+
+                        {/* Indicators Dropdown Menu */}
                         {showIndicatorMenu && (
-                            <div className="absolute right-0 top-10 z-50 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl min-w-[180px]">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 px-1">Toggle Overlays</p>
+                            <div className="absolute right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl min-w-[200px] z-[99999] ring-2 ring-indigo-500/20 animate-in fade-in zoom-in duration-200">
+                                <div className="flex items-center justify-between mb-3 px-1">
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Indicators</p>
+                                    <button onClick={() => setShowIndicatorMenu(false)} className="text-slate-500 hover:text-white">✕</button>
+                                </div>
                                 {INDICATOR_OPTIONS.map(ind => (
                                     <button
                                         key={ind}
                                         onClick={() => toggleIndicator(ind)}
-                                        className={`w-full text-left px-3 py-1.5 text-sm rounded-lg mb-1 flex items-center gap-2 transition-colors ${selectedIndicators.includes(ind)
-                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg mb-1.5 flex items-center justify-between transition-all ${selectedIndicators.includes(ind)
+                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
+                                                : "text-slate-400 hover:bg-slate-800 hover:text-white border border-transparent"
                                             }`}
                                     >
-                                        <div className={`w-2 h-2 rounded-full ${selectedIndicators.includes(ind) ? "bg-indigo-400" : "bg-slate-600"}`} />
-                                        {ind.toUpperCase()}
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${selectedIndicators.includes(ind) ? "bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.6)]" : "bg-slate-600"}`} />
+                                            {ind.toUpperCase()}
+                                        </div>
+                                        {selectedIndicators.includes(ind) && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
                                     </button>
                                 ))}
                                 <button
                                     onClick={() => { loadData(); setShowIndicatorMenu(false) }}
-                                    className="w-full mt-2 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+                                    className="w-full mt-3 px-3 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
                                 >
-                                    Apply
+                                    Update Chart
                                 </button>
                             </div>
                         )}
@@ -306,27 +342,32 @@ export default function TechnicalPage() {
                 {quote && (
                     <div className="flex flex-wrap items-center gap-6 bg-slate-950/50 px-4 py-2 rounded-xl border border-slate-800/60 mb-4 text-sm">
                         <div className="flex items-center gap-2">
-                            <span className="text-slate-400 font-bold">{quote.ticker}</span>
-                            <span className="text-2xl font-bold text-white font-mono">${quote.last.toFixed(2)}</span>
+                            <span className="text-slate-400 font-bold">{quote.ticker.replace(/\.NS$/, ".NSE")}</span>
+                            <span className="text-2xl font-bold text-white font-mono">₹{quote.last.toFixed(2)}</span>
                             <Badge className={`${isPositive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"} font-mono text-xs`}>
                                 {isPositive ? <TrendingUp className="w-3 h-3 inline mr-1" /> : <TrendingDown className="w-3 h-3 inline mr-1" />}
                                 {isPositive ? "+" : ""}{quote.change.toFixed(2)} ({quote.change_pct.toFixed(2)}%)
                             </Badge>
                         </div>
-                        <div className="flex gap-6 text-slate-400 text-xs">
-                            <span>Prev Close: <span className="text-slate-200">${quote.prev_close.toFixed(2)}</span></span>
-                            <span>Bid: <span className="text-slate-200">${quote.bid.toFixed(2)}</span></span>
-                            <span>Ask: <span className="text-slate-200">${quote.ask.toFixed(2)}</span></span>
+                        {candles.length > 0 && (
+                            <div className="flex gap-4 text-slate-400 text-xs ml-2 border-l border-slate-800 pl-4">
+                                <span>O: <span className="text-slate-200">₹{candles[candles.length - 1].open.toFixed(2)}</span></span>
+                                <span>H: <span className="text-emerald-400/80">₹{candles[candles.length - 1].high.toFixed(2)}</span></span>
+                                <span>L: <span className="text-rose-400/80">₹{candles[candles.length - 1].low.toFixed(2)}</span></span>
+                                <span>C: <span className="text-slate-200">₹{candles[candles.length - 1].close.toFixed(2)}</span></span>
+                            </div>
+                        )}
+                        <div className="flex gap-6 text-slate-400 text-xs ml-auto">
                             <span>Vol: <span className="text-slate-200">{quote.volume.toLocaleString()}</span></span>
                         </div>
                         {lastRefreshed && (
-                            <span className="ml-auto text-[10px] text-slate-600">Updated {lastRefreshed.toLocaleTimeString()}</span>
+                            <span className="text-[10px] text-slate-600">Updated {lastRefreshed.toLocaleTimeString()}</span>
                         )}
                     </div>
                 )}
 
                 {/* Main Grid */}
-                <div className="grid gap-6 lg:grid-cols-4">
+                <div className="grid gap-6 lg:grid-cols-4 relative z-0">
                     {/* Chart */}
                     <div className="col-span-4 xl:col-span-3">
                         <div className="h-[500px] rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden relative">
@@ -342,6 +383,12 @@ export default function TechnicalPage() {
                                     volumeData={volumeSeries}
                                     rsiData={rsiSeries}
                                     ticker={ticker}
+                                    highlightRange={highlightRange}
+                                    selectedPattern={selectedPattern}
+                                    onClosePattern={() => {
+                                        setSelectedPattern(null);
+                                        setHighlightRange(null);
+                                    }}
                                 />
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
@@ -378,7 +425,21 @@ export default function TechnicalPage() {
                     {/* Sidebar Panels */}
                     <div className="col-span-4 xl:col-span-1 space-y-5">
 
-                        {/* RSI Gauge */}
+                        {/* 🤖 AI Pattern Detection — real-time ensemble */}
+                        <AIPatternDetection
+                            candles={candles}
+                            ticker={ticker}
+                            timeframe={timeframe.interval}
+                            onSelectPattern={(pat, range, image) => {
+                                setHighlightRange(range);
+                                if (pat) {
+                                    setSelectedPattern({ ...pat, image });
+                                } else {
+                                    setSelectedPattern(null);
+                                }
+                            }}
+                        />
+
                         <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-xs text-indigo-400 font-bold uppercase tracking-widest flex items-center gap-2">
@@ -419,16 +480,16 @@ export default function TechnicalPage() {
                                     {sr.resistance.map((v, i) => (
                                         <li key={`r${i}`} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-rose-500/10">
                                             <span className="text-rose-400 font-mono text-xs bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">R{i + 1}</span>
-                                            <span className="text-white font-mono">${v.toFixed(2)}</span>
+                                            <span className="text-white font-mono">₹{v.toFixed(2)}</span>
                                         </li>
                                     ))}
                                     <li className="flex items-center justify-center py-1">
-                                        <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-0.5">▶ Current ${currentPrice.toFixed(2)}</span>
+                                        <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-0.5">▶ Current ₹{currentPrice.toFixed(2)}</span>
                                     </li>
                                     {sr.support.map((v, i) => (
                                         <li key={`s${i}`} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-emerald-500/10">
                                             <span className="text-emerald-400 font-mono text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">S{i + 1}</span>
-                                            <span className="text-white font-mono">${v.toFixed(2)}</span>
+                                            <span className="text-white font-mono">₹{v.toFixed(2)}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -443,7 +504,34 @@ export default function TechnicalPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {candles.length >= 3 ? (() => {
+                                {advancedPatterns?.patterns && advancedPatterns.patterns.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {advancedPatterns.patterns.map((p: any, i: number) => {
+                                            const colorMap: Record<string, string> = {
+                                                "Bullish": "emerald",
+                                                "Bearish": "rose",
+                                                "Reversal": "amber"
+                                            }
+                                            const color = colorMap[p.sentiment || "Reversal"] || "indigo"
+                                            
+                                            // Ensure valid color string for Tailwind classes
+                                            // The ML service returns arbitrary pattern names
+                                            
+                                            return (
+                                            <li key={i} className={`p-2.5 rounded-lg bg-slate-950/50 border border-slate-800`}>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-white font-medium flex items-center gap-1.5">
+                                                        <div className={`w-2 h-2 rounded-full bg-${color}-500`} />
+                                                        {p.name}
+                                                    </span>
+                                                    <span className={`font-mono text-xs text-${color}-400 font-bold`}>{typeof p.confidence === 'number' ? p.confidence.toFixed(1) : p.confidence}%</span>
+                                                </div>
+                                                <span className={`text-[10px] text-${color}-500 pl-3.5`}>{p.sentiment || "Trend"} signal</span>
+                                            </li>
+                                        )})}
+                                    </ul>
+                                ) : candles.length >= 3 ? (() => {
+                                    // Fallback UI when ML patterns returns empty
                                     const last3 = candles.slice(-3)
                                     const patterns = []
 
@@ -458,24 +546,20 @@ export default function TechnicalPage() {
                                     // Doji
                                     const doji = last3[2]
                                     if (Math.abs(doji.close - doji.open) / (doji.high - doji.low + 0.001) < 0.1) {
-                                        patterns.push({ name: "Doji", confidence: 75, color: "amber", bias: "Reversal" })
-                                    }
-                                    // Three-day trend
-                                    if (last3.every((c, i) => i === 0 || c.close > last3[i - 1].close)) {
-                                        patterns.push({ name: "3-Day Rally", confidence: 82, color: "emerald", bias: "Bullish" })
-                                    }
-                                    if (last3.every((c, i) => i === 0 || c.close < last3[i - 1].close)) {
-                                        patterns.push({ name: "3-Day Decline", confidence: 80, color: "rose", bias: "Bearish" })
+                                        patterns.push({ name: "Near Doji (Low Vol)", confidence: 65, color: "amber", bias: "Reversal Consolidation" })
                                     }
 
                                     if (!patterns.length) {
-                                        return <p className="text-slate-500 text-sm">No strong patterns detected in recent candles.</p>
+                                        return <div className="text-center p-4 border border-slate-800/60 rounded-lg bg-slate-900/30">
+                                            <Zap className="w-6 h-6 text-slate-600 mx-auto mb-2 opacity-50" />
+                                            <p className="text-slate-400 text-sm">Awaiting dynamic pattern formation.</p>
+                                        </div>
                                     }
 
                                     return (
                                         <ul className="space-y-2">
                                             {patterns.map((p, i) => (
-                                                <li key={i} className={`p-2.5 rounded-lg bg-slate-950/50 border border-${p.color}-500/15`}>
+                                                <li key={i} className={`p-2.5 rounded-lg bg-slate-950/50 border border-slate-800`}>
                                                     <div className="flex items-center justify-between text-sm">
                                                         <span className="text-white font-medium flex items-center gap-1.5">
                                                             <div className={`w-2 h-2 rounded-full bg-${p.color}-500`} />
@@ -494,6 +578,7 @@ export default function TechnicalPage() {
 
                     </div>
                 </div>
+
             </div>
         </ErrorBoundary>
     )

@@ -12,7 +12,7 @@ export function AIBriefing() {
     useEffect(() => {
         // In real app, fetch from ML Service /sentiment
         setTimeout(() => {
-            setBriefing("Markets experienced strong upward momentum today following positive tech earnings. The AI sector (NVDA, AMD) led the rally, lifting the NASDAQ by 1.2%. Treasury yields stabilized, suggesting easing inflation concerns. Your portfolio's heavy tech weighting outperformed the broader market by +0.8%. Watch for tomorrow's CPI data release at 8:30 AM EST.");
+            setBriefing("Markets experienced strong upward momentum today following positive IT earnings. The AI sector (TCS.NS, AXISBANK.NS) led the rally, lifting the NIFTY50 by 1.2%. Bond yields stabilized, suggesting easing inflation concerns. Your portfolio's heavy IT weighting outperformed the broader market by +0.8%. Watch for tomorrow's RBI policy announcement at 10:00 AM IST.");
             setLoading(false);
         }, 1500);
     }, []);

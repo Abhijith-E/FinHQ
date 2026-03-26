@@ -36,8 +36,8 @@ async def websocket_endpoint(
 
     Protocol:
       Connect: ws://host/ws?token=<jwt>
-      Subscribe: {"action": "subscribe", "channel": "price:AAPL"}
-      Unsubscribe: {"action": "unsubscribe", "channel": "price:AAPL"}
+      Subscribe: {"action": "subscribe", "channel": "price:RELIANCE.NS"}
+      Unsubscribe: {"action": "unsubscribe", "channel": "price:RELIANCE.NS"}
     """
     user_id = await _authenticate_ws(token) if token else 0
     await manager.connect(websocket)
@@ -46,7 +46,7 @@ async def websocket_endpoint(
         await websocket.send_json({
             "type": "connected",
             "user_id": user_id,
-            "message": "WebSocket connected. Send {action: subscribe, channel: 'price:AAPL'} to start."
+            "message": "WebSocket connected. Send {action: subscribe, channel: 'price:RELIANCE.NS'} to start."
         })
 
         while True:

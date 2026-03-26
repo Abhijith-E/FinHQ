@@ -10,7 +10,7 @@ export function AlertsBanner() {
 
     useEffect(() => {
         // Mock existing alert
-        setAlerts([{ id: "1", ticker: "NVDA", message: "NVDA crossed above target $800.00", timestamp: new Date() }]);
+        setAlerts([{ id: "1", ticker: "TCS.NS", message: "TCS.NS crossed above target ₹800.00", timestamp: new Date() }]);
 
         const unsubscribe = subscribe("alerts:1", (data) => {
             // Add new incoming alert to the front

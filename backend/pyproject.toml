@@ -25,6 +25,8 @@ pandas = "^2.2.0"
 numpy = "^1.26.3"
 yfinance = "^0.2.40"
 ta = "^0.11.0"
+argon2-cffi = "^23.1.0"
+zxcvbn = "^4.4.28"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

@@ -15,6 +15,7 @@ class Portfolio(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String)
+    cash_balance = Column(Float, nullable=False, default=100000.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", backref="portfolios")

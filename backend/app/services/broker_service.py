@@ -33,9 +33,9 @@ class BrokerService:
         """Simulate a current market price using GBM-like random walk."""
         # In production, this would fetch from a real-time data provider
         base_prices = {
-            "AAPL": 175.0, "MSFT": 380.0, "GOOGL": 140.0, "AMZN": 185.0,
-            "TSLA": 250.0, "NVDA": 800.0, "META": 490.0, "BRK.B": 390.0,
-            "JPM": 200.0, "V": 280.0
+            "RELIANCE.NS": 3000.0, "TCS.NS": 4000.0, "HDFCBANK.NS": 1600.0, "INFY.NS": 1650.0,
+            "ICICIBANK.NS": 1050.0, "SBIN.NS": 750.0, "BHARTIARTL.NS": 1150.0, "ITC.NS": 450.0,
+            "LT.NS": 3600.0, "HINDUNILVR.NS": 2400.0
         }
         base = base_prices.get(ticker.upper(), 100.0)
         # Add small random noise to simulate market fluctuation
@@ -82,8 +82,7 @@ class BrokerService:
             quantity=order_in.quantity,
             price=order_in.price,
             status=status,
-            filled_avg_price=fill_price,
-            filled_at=datetime.utcnow() if status == OrderStatus.FILLED else None
+            filled_avg_price=fill_price
         )
         db.add(db_order)
 
@@ -97,11 +96,20 @@ class BrokerService:
 
     async def _update_positions(self, db: AsyncSession, portfolio: models.Portfolio, order_in: schemas.OrderCreate, fill_price: float):
         """Update portfolio positions and cash balance after a fill."""
+        from app.models.stock import Stock
+        from app.models.portfolio import TransactionType
+        
+        # Look up stock_id
+        st_result = await db.execute(select(Stock).where(Stock.ticker == order_in.ticker))
+        stock = st_result.scalars().first()
+        if not stock:
+            raise HTTPException(status_code=404, detail=f"Stock {order_in.ticker} not found in database for portfolio reference")
+        
         # Find existing position
         result = await db.execute(
             select(models.Position).where(
                 models.Position.portfolio_id == portfolio.id,
-                models.Position.ticker == order_in.ticker
+                models.Position.stock_id == stock.id
             )
         )
         position = result.scalars().first()
@@ -118,7 +126,7 @@ class BrokerService:
             else:
                 position = models.Position(
                     portfolio_id=portfolio.id,
-                    ticker=order_in.ticker,
+                    stock_id=stock.id,
                     quantity=order_in.quantity,
                     average_price=fill_price
                 )
@@ -136,11 +144,11 @@ class BrokerService:
         # Log a transaction
         transaction = models.Transaction(
             portfolio_id=portfolio.id,
-            ticker=order_in.ticker,
-            type=TransactionType.BUY if order_in.side == "BUY" else TransactionType.SELL,
+            stock_id=stock.id,
+            type=TransactionType.BUY.value if order_in.side == "BUY" else TransactionType.SELL.value,
             quantity=order_in.quantity,
             price=fill_price,
-            date=datetime.utcnow()
+            timestamp=datetime.utcnow()
         )
         db.add(transaction)
 
@@ -153,24 +161,28 @@ class BrokerService:
 
     async def get_user_positions(self, db: AsyncSession, user_id: int):
         """Get current positions with live prices."""
+        from sqlalchemy.orm import selectinload
         portfolio = await self._get_or_create_portfolio(db, user_id)
         result = await db.execute(
-            select(models.Position).where(models.Position.portfolio_id == portfolio.id)
+            select(models.Position)
+            .where(models.Position.portfolio_id == portfolio.id)
+            .options(selectinload(models.Position.stock))
         )
         positions = result.scalars().all()
 
         enriched = []
         for pos in positions:
-            live_price = await self._get_simulated_price(pos.ticker)
+            ticker = pos.stock.ticker if pos.stock else "UNKNOWN"
+            live_price = await self._get_simulated_price(ticker)
             unrealized_pnl = (live_price - pos.average_price) * pos.quantity
             enriched.append({
-                "ticker": pos.ticker,
+                "ticker": ticker,
                 "quantity": pos.quantity,
                 "average_price": pos.average_price,
                 "current_price": live_price,
                 "market_value": live_price * pos.quantity,
                 "unrealized_pnl": round(unrealized_pnl, 2),
-                "unrealized_pnl_pct": round((unrealized_pnl / (pos.average_price * pos.quantity)) * 100, 2)
+                "unrealized_pnl_pct": round((unrealized_pnl / (pos.average_price * pos.quantity)) * 100, 2) if pos.average_price > 0 else 0
             })
 
         return {

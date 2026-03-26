@@ -6,14 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     PieChart,
-    TrendingUp,
-    TrendingDown,
-    DollarSign,
-    Activity,
-    History,
-    Briefcase,
-    ArrowUpRight,
-    ArrowDownRight
+    TrendingUp, ArrowUpRight, ArrowDownRight, Clock,
+    IndianRupee, Activity, Info, Download, Filter,
+    ArrowRightLeft, AlertCircle, Briefcase, History, TrendingDown
 } from "lucide-react"
 
 // Mock Portfolio Data
@@ -28,20 +23,20 @@ const PORTFOLIO_MOCK = {
         totalReturnPct: 24.5,
     },
     holdings: [
-        { id: 1, ticker: "AAPL", shares: 150, avgPrice: 145.50, currentPrice: 175.25, value: 26287.50, returnPct: 20.45 },
-        { id: 2, ticker: "MSFT", shares: 80, avgPrice: 280.00, currentPrice: 310.50, value: 24840.00, returnPct: 10.89 },
-        { id: 3, ticker: "NVDA", shares: 45, avgPrice: 450.00, currentPrice: 850.20, value: 38259.00, returnPct: 88.93 },
-        { id: 4, ticker: "TSLA", shares: 100, avgPrice: 250.00, currentPrice: 197.14, value: 19714.00, returnPct: -21.14 },
+        { id: 1, ticker: "RELIANCE.NS", shares: 150, avgPrice: 145.50, currentPrice: 175.25, value: 26287.50, returnPct: 20.45 },
+        { id: 2, ticker: "HDFCBANK.NS", shares: 80, avgPrice: 280.00, currentPrice: 310.50, value: 24840.00, returnPct: 10.89 },
+        { id: 3, ticker: "TCS.NS", shares: 45, avgPrice: 450.00, currentPrice: 850.20, value: 38259.00, returnPct: 88.93 },
+        { id: 4, ticker: "ICICIBANK.NS", shares: 100, avgPrice: 250.00, currentPrice: 197.14, value: 19714.00, returnPct: -21.14 },
     ],
     allocation: [
-        { sector: "Technology", percentage: 65, color: "bg-indigo-500" },
+        { sector: "IT", percentage: 65, color: "bg-indigo-500" },
         { sector: "Consumer Cyclical", percentage: 15, color: "bg-emerald-500" },
         { sector: "Cash", percentage: 12, color: "bg-slate-500" },
         { sector: "Healthcare", percentage: 8, color: "bg-rose-500" }
     ],
     recentActivity: [
-        { id: 1, action: "BUY", ticker: "AAPL", shares: 10, price: 172.50, date: "2024-03-08", value: 1725.00 },
-        { id: 2, action: "SELL", ticker: "META", shares: 25, price: 495.20, date: "2024-03-05", value: 12380.00 },
+        { id: 1, action: "BUY", ticker: "RELIANCE.NS", shares: 10, price: 172.50, date: "2024-03-08", value: 1725.00 },
+        { id: 2, action: "SELL", ticker: "SBIN.NS", shares: 25, price: 495.20, date: "2024-03-05", value: 12380.00 },
         { id: 3, action: "DEPOSIT", type: "ACH", amount: 5000.00, date: "2024-03-01", status: "COMPLETED" }
     ]
 }
@@ -73,20 +68,20 @@ export default function PortfolioPage() {
                     <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-slate-400">Total Portfolio Value</CardTitle>
-                        <DollarSign className="h-4 w-4 text-indigo-400" />
+                        <IndianRupee className="h-4 w-4 text-indigo-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">${PORTFOLIO_MOCK.overview.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold text-white">₹{PORTFOLIO_MOCK.overview.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div className="flex items-center gap-2 mt-1">
                             {PORTFOLIO_MOCK.overview.dayReturn >= 0 ? (
                                 <span className="text-xs text-emerald-400 flex items-center bg-emerald-500/10 px-1.5 py-0.5 rounded">
                                     <ArrowUpRight className="w-3 h-3 mr-1" />
-                                    +${PORTFOLIO_MOCK.overview.dayReturn.toLocaleString()} (+{PORTFOLIO_MOCK.overview.dayReturnPct}%)
+                                    +₹{PORTFOLIO_MOCK.overview.dayReturn.toLocaleString()} (+{PORTFOLIO_MOCK.overview.dayReturnPct}%)
                                 </span>
                             ) : (
                                 <span className="text-xs text-red-400 flex items-center bg-red-500/10 px-1.5 py-0.5 rounded">
                                     <ArrowDownRight className="w-3 h-3 mr-1" />
-                                    -${Math.abs(PORTFOLIO_MOCK.overview.dayReturn).toLocaleString()} ({PORTFOLIO_MOCK.overview.dayReturnPct}%)
+                                    -₹{Math.abs(PORTFOLIO_MOCK.overview.dayReturn).toLocaleString()} ({PORTFOLIO_MOCK.overview.dayReturnPct}%)
                                 </span>
                             )}
                             <span className="text-xs text-slate-500">Today</span>
@@ -102,7 +97,7 @@ export default function PortfolioPage() {
                     </CardHeader>
                     <CardContent>
                         <div className={`text-2xl font-bold ${PORTFOLIO_MOCK.overview.totalReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {PORTFOLIO_MOCK.overview.totalReturn >= 0 ? '+' : '-'}${Math.abs(PORTFOLIO_MOCK.overview.totalReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {PORTFOLIO_MOCK.overview.totalReturn >= 0 ? '+' : '-'}₹{Math.abs(PORTFOLIO_MOCK.overview.totalReturn).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <p className="text-xs text-slate-500 mt-1 flex items-center">
                             <span className={PORTFOLIO_MOCK.overview.totalReturnPct >= 0 ? 'text-emerald-400 mr-2 border border-emerald-500/20 bg-emerald-500/10 px-1 py-0.5 rounded' : 'text-red-400 mr-2 border border-red-500/20 bg-red-500/10 px-1 py-0.5 rounded'}>
@@ -120,7 +115,7 @@ export default function PortfolioPage() {
                         <PieChart className="h-4 w-4 text-blue-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">${PORTFOLIO_MOCK.overview.investedValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold text-white">₹{PORTFOLIO_MOCK.overview.investedValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         <p className="text-xs text-slate-500 mt-1">Across {PORTFOLIO_MOCK.holdings.length} assets</p>
                     </CardContent>
                 </Card>
@@ -132,7 +127,7 @@ export default function PortfolioPage() {
                         <Activity className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">${PORTFOLIO_MOCK.overview.cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div className="text-2xl font-bold text-white">₹{PORTFOLIO_MOCK.overview.cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         <p className="text-xs text-slate-500 mt-1">Settled buying power</p>
                     </CardContent>
                 </Card>
@@ -171,9 +166,9 @@ export default function PortfolioPage() {
                                                     {position.ticker}
                                                 </td>
                                                 <td className="px-4 py-4 text-slate-300 text-right font-mono">{position.shares}</td>
-                                                <td className="px-4 py-4 text-slate-300 text-right font-mono">${position.avgPrice.toFixed(2)}</td>
-                                                <td className="px-4 py-4 text-white text-right font-mono">${position.currentPrice.toFixed(2)}</td>
-                                                <td className="px-4 py-4 text-white font-medium text-right font-mono">${position.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                <td className="px-4 py-4 text-slate-300 text-right font-mono">₹{position.avgPrice.toFixed(2)}</td>
+                                                <td className="px-4 py-4 text-white text-right font-mono">₹{position.currentPrice.toFixed(2)}</td>
+                                                <td className="px-4 py-4 text-white font-medium text-right font-mono">₹{position.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                                 <td className="px-4 py-4 text-right">
                                                     <Badge variant="outline" className={`font-mono ${position.returnPct >= 0
                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -249,7 +244,7 @@ export default function PortfolioPage() {
                                                 }`}>
                                                 {activity.action === 'BUY' ? <TrendingUp className="w-4 h-4" /> :
                                                     activity.action === 'SELL' ? <TrendingDown className="w-4 h-4" /> :
-                                                        <DollarSign className="w-4 h-4" />}
+                                                        <IndianRupee className="w-4 h-4" />}
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-white">
@@ -260,10 +255,10 @@ export default function PortfolioPage() {
                                         </div>
                                         <div className="text-right">
                                             <div className="text-sm font-medium text-white font-mono">
-                                                {activity.action === 'SELL' ? '+' : '-'}${activity.value?.toLocaleString() || activity.amount?.toLocaleString()}
+                                                {activity.action === 'SELL' ? '+' : '-'}₹{activity.value?.toLocaleString() || activity.amount?.toLocaleString()}
                                             </div>
                                             {activity.shares && (
-                                                <div className="text-xs text-slate-500">{activity.shares} shs @ ${activity.price}</div>
+                                                <div className="text-xs text-slate-500">{activity.shares} shs @ ₹{activity.price}</div>
                                             )}
                                             {activity.status && (
                                                 <div className="text-xs text-emerald-400">{activity.status}</div>

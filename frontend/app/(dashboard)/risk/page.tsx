@@ -43,7 +43,7 @@ export default function RiskPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-red-400">{MOCK_RISK.metrics.var_95_daily_pct}%</div>
-                        <p className="text-xs text-slate-500">Est. Daily Loss: ${Math.abs(MOCK_RISK.metrics.var_95_daily_usd).toLocaleString()}</p>
+                        <p className="text-xs text-slate-500">Est. Daily Loss: ₹{Math.abs(MOCK_RISK.metrics.var_95_daily_usd).toLocaleString()}</p>
                     </CardContent>
                 </Card>
                 <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl">
@@ -73,9 +73,10 @@ export default function RiskPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-orange-400">{MOCK_RISK.metrics.max_drawdown_pct}%</div>
-                        <p className="text-xs text-slate-500">Peak loss: ${Math.abs(MOCK_RISK.metrics.max_drawdown_usd).toLocaleString()}</p>
+                        <p className="text-xs text-slate-500">Peak loss: ₹{Math.abs(MOCK_RISK.metrics.max_drawdown_usd).toLocaleString()}</p>
                     </CardContent>
                 </Card>
+
             </div>
 
             <div className="grid gap-4 md:grid-cols-12 mt-4">
@@ -125,7 +126,7 @@ export default function RiskPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-slate-300">Daily Loss Limit</span>
-                                    <span className="font-medium text-white">-$850 / -$1,000</span>
+                                    <span className="font-medium text-white">-₹850 / -₹1,000</span>
                                 </div>
                                 <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                                     <div className="h-full bg-orange-500 rounded-full w-[85%]"></div>

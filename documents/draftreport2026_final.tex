@@ -1,0 +1,828 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[left=1.5in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage{newtxtext,newtxmath}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{needspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\captionsetup{font=small}
+\widowpenalty=10000
+\clubpenalty=10000
+\brokenpenalty=10000
+
+\newcommand{\projecttitle}{A Data-Centric Platform for Investment Analytics\\and Financial Market Decision Support}
+\newcommand{\projectshort}{FinHQ}
+\newcommand{\studentname}{Abhijith E}
+\newcommand{\regno}{2448503}
+\newcommand{\studentmail}{abhijith.e@msam.christuniversity.in}
+\newcommand{\reportdate}{March 8, 2026}
+\newcommand{\repolink}{https://github.com/Abhijith-E/fintechphase2}
+
+\titleformat{\chapter}[display]
+  {\bfseries\centering\fontsize{16}{18}\selectfont}
+  {\MakeUppercase{Chapter \thechapter}}
+  {0.5em}
+  {\MakeUppercase}
+
+\titleformat{\section}
+  {\needspace{6\baselineskip}\bfseries\fontsize{12}{14}\selectfont}
+  {\thesection}
+  {0.75em}
+  {\MakeUppercase}
+
+\titleformat{\subsection}
+  {\needspace{5\baselineskip}\bfseries\fontsize{12}{14}\selectfont}
+  {\thesubsection}
+  {0.75em}
+  {}
+
+\titlespacing*{\chapter}{0pt}{0pt}{18pt}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+\fancypagestyle{reportstyle}{
+  \fancyhf{}
+  \fancyhead[L]{\fontsize{10}{12}\selectfont \projectshort}
+  \fancyhead[R]{\fontsize{10}{12}\selectfont \thepage}
+  \fancyfoot[C]{\fontsize{10}{12}\selectfont Department of Computer Science, CHRIST (Deemed to be University)}
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+}
+
+\begin{document}
+
+% --------------------------------------------------
+% Title Page
+% --------------------------------------------------
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{0.6in}
+{\fontsize{16}{18}\selectfont\bfseries CHRIST (DEEMED TO BE UNIVERSITY)\par}
+\vspace{0.1in}
+{\fontsize{12}{14}\selectfont Department of Computer Science\par}
+\vspace{0.45in}
+{\fontsize{16}{18}\selectfont\bfseries DRAFT PROJECT REPORT\par}
+\vspace{0.3in}
+{\fontsize{16}{18}\selectfont\bfseries \projecttitle\par}
+\vspace{0.35in}
+{\fontsize{12}{14}\selectfont Submitted in partial fulfillment of the requirements for the project work\par}
+\vspace{0.25in}
+{\fontsize{12}{14}\selectfont Project Name: \textbf{\projectshort}\par}
+\vspace{0.25in}
+\begin{tabular}{rl}
+\textbf{Name} & : \studentname \\
+\textbf{Register Number} & : \regno \\
+\textbf{Email} & : \studentmail \\
+\textbf{Repository} & : \url{\repolink} \\
+\textbf{Date} & : \reportdate \\
+\end{tabular}
+\vfill
+{\fontsize{12}{14}\selectfont Recommended report preparation format as per Department guidelines\par}
+\vspace{0.15in}
+{\fontsize{12}{14}\selectfont Spiral Binding Colour: Light Blue\par}
+\vspace{0.35in}
+{\fontsize{12}{14}\selectfont Academic Year 2025--2026\par}
+\end{titlepage}
+
+% --------------------------------------------------
+% Certificate Page
+% --------------------------------------------------
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{0.7in}
+{\fontsize{16}{18}\selectfont\bfseries CERTIFICATE\par}
+\vspace{0.45in}
+\begin{spacing}{1.5}
+\noindent This is to certify that the draft project report entitled \textbf{\projecttitle} is a bonafide record of the work carried out by \textbf{\studentname} (Register Number: \textbf{\regno}) of the Department of Computer Science, CHRIST (Deemed to be University), during the academic year 2025--2026.
+
+\vspace{0.25in}
+\noindent The report has been prepared based on the implementation available in the project repository \url{\repolink} and the technical analysis performed on the corresponding source code, system modules, and supporting documentation.
+\end{spacing}
+
+\vspace{1.6in}
+\begin{tabular}{p{2.4in} p{2.4in}}
+\centering\hrulefill & \centering\hrulefill \tabularnewline
+\centering Guide & \centering Project Coordinator \tabularnewline
+\end{tabular}
+
+\vspace{1.1in}
+\begin{tabular}{p{2.4in} p{2.4in}}
+\centering\hrulefill & \centering\hrulefill \tabularnewline
+\centering Head of the Department & \centering External Examiner \tabularnewline
+\end{tabular}
+
+\vfill
+\noindent Place: Bengaluru \hfill Date: \reportdate
+\end{titlepage}
+
+% --------------------------------------------------
+% Front Matter
+% --------------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{3}
+\pagestyle{reportstyle}
+
+\chapter*{ACKNOWLEDGMENTS}
+\addcontentsline{toc}{chapter}{Acknowledgments}
+I express my sincere gratitude to my guide for the technical direction, review support, and timely suggestions that shaped the work presented in this draft report. The structure, module coverage, and engineering decisions documented here benefitted significantly from academic guidance and constructive feedback during the project period.
+
+I also thank the Department of Computer Science, CHRIST (Deemed to be University), for providing the academic environment required to plan, implement, and document this project in a disciplined manner. The department's emphasis on engineering quality, documentation, and technical review has directly influenced the way this report has been prepared.
+
+My thanks are due to all those who contributed to the successful completion of this work through discussion, review, testing support, and motivation. Their assistance helped in refining the system architecture, validating key workflows, and improving the clarity of the final documentation.
+
+\chapter*{ABSTRACT}
+\addcontentsline{toc}{chapter}{Abstract}
+\begin{spacing}{1.0}
+This draft report presents \projectshort, a data-centric platform designed for investment analytics and financial market decision support. The project integrates secure user management, stock research, market data analysis, paper trading, alerting, educational support, and machine-learning-assisted analytics within a single full-stack architecture. The system is implemented as a multi-service solution consisting of a Next.js frontend, a FastAPI backend, a dedicated FastAPI ML microservice, PostgreSQL-based persistence, Redis support, and Docker-based orchestration. The scope of the project includes technical analysis, fundamental analysis, news intelligence, portfolio monitoring, strategy handling, backtesting, and risk analytics. Major outcomes of the implementation include a modular architecture, an extensible domain model, an authentication flow with password hardening and two-factor support, and a service separation that keeps computational analytics away from transactional business logic. The draft report concludes that the project provides a strong foundation for a production-style fintech platform while still requiring additional integration, testing, and live-market connectivity to achieve full operational maturity.
+\end{spacing}
+
+{\pagestyle{empty}\tableofcontents\clearpage}
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+\clearpage
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+\clearpage
+
+\chapter*{ABBREVIATIONS}
+\addcontentsline{toc}{chapter}{Abbreviations}
+\begin{longtable}{p{1.6in} p{4.6in}}
+\textbf{Abbreviation} & \textbf{Meaning} \\
+\hline
+API & Application Programming Interface \\
+AI & Artificial Intelligence \\
+ML & Machine Learning \\
+UI & User Interface \\
+UX & User Experience \\
+JWT & JSON Web Token \\
+TOTP & Time-based One-Time Password \\
+OHLCV & Open, High, Low, Close, Volume \\
+DFD & Data Flow Diagram \\
+ER & Entity Relationship \\
+ORM & Object Relational Mapping \\
+P\&L & Profit and Loss \\
+VaR & Value at Risk \\
+LSTM & Long Short-Term Memory \\
+CNN & Convolutional Neural Network \\
+CI & Continuous Integration \\
+DB & Database \\
+\end{longtable}
+\clearpage
+
+% --------------------------------------------------
+% Main Matter
+% --------------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\pagestyle{reportstyle}
+
+\chapter{INTRODUCTION}
+This chapter introduces the background, scope, objectives, and context of the project in concise form.
+
+\section{PROJECT DESCRIPTION}
+\projectshort{} is a full-stack software system built to support investment analytics, financial market understanding, and decision support through a combination of market data access, portfolio visibility, simulation-based trading, and AI-assisted analytics. The project implementation in the inspected repository snapshot is based on a modern web-first architecture that combines a React-based user interface, a transactional application backend, and a dedicated machine-learning microservice. The codebase is available through the project repository [1].
+
+The core idea behind the platform is that investment decision-making should not be fragmented across unrelated tools. In many typical workflows, an investor uses one application for price charts, another for news, another for portfolio tracking, another for alerts, and another for strategy analysis. That fragmented model increases cognitive load and delays decision-making. \projectshort{} addresses this by providing one structured platform where research, monitoring, learning, and simulated execution can coexist.
+
+The system has been designed as a data-centric solution because data is the foundational asset for every major workflow in the platform. Historical price data, quote data, user profile data, portfolio state, notification history, community content, technical indicators, and model-derived outputs all feed into the system's decision-support layer. Instead of treating analytics as an optional add-on, the project makes data ingestion, transformation, persistence, and interpretation central to the platform design.
+
+From an implementation standpoint, the frontend uses Next.js and React for modular presentation and route-based application flow [2], [3]. The backend uses FastAPI to expose versioned REST endpoints and domain-centric service layers [4]. The analytics component is isolated in a dedicated ML microservice that uses PyTorch and associated Python libraries for predictive and pattern-based workflows [7]. The overall deployment pattern is organized through Docker-based containerization [5].
+
+\section{EXISTING SYSTEM}
+The existing system, in the broader problem context rather than a single vendor product, is characterized by fragmentation, limited personalization, and inconsistent integration between financial workflows. Many stock market applications focus only on quote consumption or charting and do not combine analytics, education, portfolio tracking, and simulated execution in one coherent interface. Other platforms provide rich charting but weak academic or decision-support context. Some support news, but not alerting or user-level learning features. Others support watchlists and basic research but not deeper model-driven interpretation.
+
+In the student-project and prototype domain, another limitation is shallow system design. Many projects present only a dashboard mockup or a single prediction model without a proper data model, persistence strategy, or service boundary. They rarely address user security, report generation, stateful portfolio handling, or modular deployment. As a result, the project may look visually complete but remain architecturally weak.
+
+The existing situation also includes weak treatment of security in fintech-themed academic systems. Password complexity, breach detection, session tracking, token lifecycle handling, and account lockout logic are frequently ignored. In a domain involving simulated financial accounts and user-specific activity, this omission reduces credibility. \projectshort{} attempts to improve on this by explicitly implementing secure authentication flows and maintaining an application-level view of account integrity.
+
+The existing system landscape is also limited in how it handles AI. A common weakness is that machine learning is shown as a disconnected prediction page rather than an integrated service tied to research, risk, patterns, or strategy workflows. In contrast, this project incorporates an ML microservice that can contribute to technical analysis, sentiment analysis, risk estimation, and forecasting inside a broader application context.
+
+\section{OBJECTIVES}
+To build a secure, modular, data-centric investment analytics platform that integrates market research, portfolio intelligence, paper trading, alerting, and AI-assisted financial decision support within a single extensible system.
+
+\section{PURPOSE, SCOPE AND APPLICABILITY}
+\subsection{Purpose}
+The purpose of this project is to design and implement a system that demonstrates how a modern financial decision-support platform can be developed using structured software engineering principles. The platform is intended to show that market research, analytics, alerts, and portfolio workflows can be unified inside one architecture instead of being distributed across isolated tools.
+
+Another purpose is academic. The project is meant to serve as a capstone-quality example of applied system design, data modeling, secure web engineering, service decomposition, and ML integration. Instead of limiting the scope to a single prediction feature, the work attempts to show end-to-end system thinking.
+
+The project is also significant because it addresses the gap between data access and actionable understanding. Raw price data by itself is not sufficient for most users. Investors often need interpretation in the form of technical indicators, sentiment context, risk estimates, alerting, and structured portfolio views. \projectshort{} attempts to provide that interpretive layer while still retaining transparent system boundaries.
+
+\subsection{Scope}
+The scope of this project covers frontend design, authenticated backend services, analytics-oriented microservices, database entities, paper-trading logic, alert management, learning modules, community support, and report-worthy documentation of architecture and modules. The platform supports user registration, login, password reset, 2FA-related flows, stock search, quote retrieval, OHLCV visualization, indicators, fundamentals, news, strategies, alerts, and AI endpoints.
+
+The methodology adopted is implementation-led analysis. The report is built on direct inspection of the repository code and on a review of official technology documentation for the underlying frameworks [2]--[8]. Assumptions include local deployment through Docker and the presence of staged or mock data in some screens while backend services continue to mature. The report also assumes that the inspected repository is the primary source of truth for functionality and architecture [1].
+
+The project does not currently include live-broker connectivity or complete replacement of mock UI values in all modules. Real-time market feeds are also limited or simulated in parts of the system. Therefore, the scope is best described as a production-inspired, academically substantial draft implementation rather than a fully deployed retail trading product.
+
+\subsection{Applicability}
+The project has direct applicability in educational finance tools, research sandboxes, student-level paper-trading systems, and prototype fintech platforms that require modular design and AI-assisted analytics. It is suitable for institutions and learners who want a controllable environment in which investment workflows can be studied without live capital exposure.
+
+Indirectly, the project contributes to broader digital financial literacy. Features such as technical analysis, risk explanations, learning modules, and research-driven views can help users understand how investment decisions are formed. The platform therefore supports both software-learning outcomes and finance-learning outcomes.
+
+At a societal level, systems like \projectshort{} can improve accessibility to structured market knowledge. A carefully designed decision-support system can reduce dependency on opaque advice and encourage evidence-based understanding of financial instruments. While this project remains in draft stage, its architecture is applicable to future systems in education, advisory tooling, or internal analytics platforms.
+
+\section{OVERVIEW OF THE REPORT}
+This report is organized into six chapters followed by appendices and references. Chapter 1 introduces the project, its purpose, scope, and academic context. Chapter 2 studies the system requirements, problem definition, user types, constraints, and conceptual models. Chapter 3 focuses on the system design, module structure, database reasoning, and interface design. Chapter 4 explains implementation approaches, coding standards, and selected code-level details. Chapter 5 presents testing considerations, test cases, and test-report discussion. Chapter 6 summarizes the major outcomes, issues, advantages, limitations, and future scope. The appendices provide operating instructions, supporting tables, and planning-oriented material. The references list the repository and official technology sources used while preparing the report [1]--[8].
+
+\chapter{SYSTEM ANALYSIS AND REQUIREMENTS}
+This chapter explains the problem in operational terms and defines the requirements needed to address it.
+
+\section{PROBLEM DEFINITION}
+The core problem addressed by this project is the lack of a unified, data-oriented system for retail-style investment analytics and market decision support. Investors and analysts frequently need to combine multiple information layers: security identity, price history, technical signals, company metrics, market news, portfolio exposure, alerts, and risk interpretation. In many systems, these layers are disconnected or only partially integrated.
+
+From a software-engineering perspective, the problem is not only functional but structural. A credible fintech application must manage user identity, access control, protected data flows, persistence, service orchestration, and analy­tical extensibility. If a system only shows charts without a secure backend or only makes predictions without a data model, it fails to address the real engineering problem.
+
+The project therefore decomposes the problem into the following sub-problems:
+\begin{enumerate}[label=\arabic*.]
+\item How to manage users securely in a finance-oriented web application.
+\item How to unify market data retrieval, portfolio monitoring, and decision-support views.
+\item How to separate transactional operations from heavy analytics and ML workloads.
+\item How to support paper trading, strategies, alerts, and interpretive analytics in one platform.
+\item How to retain extensibility for future live data, broker integration, and deployment growth.
+\end{enumerate}
+
+\section{REQUIREMENTS SPECIFICATION}
+The system requirements are derived from the limitations observed in fragmented investment tools and from the actual module coverage present in the repository implementation [1]. At a high level, the platform must support secure user access, structured financial data access, analytics display, and simulation-driven decision support.
+
+\textbf{Functional requirements} include:
+\begin{itemize}
+\item user registration, login, token refresh, and password reset;
+\item optional two-factor authentication flow support;
+\item stock search and asset-level metadata access;
+\item historical OHLCV retrieval and server-side indicator computation;
+\item quote retrieval, market movers, fundamentals, and news access;
+\item portfolio and position visibility;
+\item paper-trading order creation and order-state handling;
+\item alert creation, notification viewing, and read-state updates;
+\item strategy CRUD operations;
+\item education module viewing and progress tracking;
+\item social posting and commenting;
+\item analytics APIs for risk, prediction, backtesting, sentiment, and pattern detection.
+\end{itemize}
+
+\textbf{Non-functional requirements} include:
+\begin{itemize}
+\item secure authentication and protected data access;
+\item maintainable modular architecture;
+\item reproducible local deployment;
+\item support for future integration of live feeds and live trading;
+\item acceptable responsiveness for UI-driven financial analysis;
+\item traceable service boundaries between backend and ML logic;
+\item support for academic documentation and reporting.
+\end{itemize}
+
+\section{BLOCK DIAGRAM}
+The high-level block diagram of the system is shown in Fig.~2.1.
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+Users / Browser Interface\\[6pt]
+$\downarrow$\\[6pt]
+Next.js Frontend (\projectshort{} Web UI)\\[6pt]
+$\downarrow$ \hspace{1.5cm} $\searrow$\\[6pt]
+FastAPI Backend \hspace{1.7cm} FastAPI ML Service\\[6pt]
+$\downarrow$ \hspace{1.5cm} $\searrow$\\[6pt]
+PostgreSQL / Timescale-style Storage \hspace{0.7cm} Redis / MLflow / Flower
+}}
+\caption{Overall block diagram of the \projectshort{} platform}
+\end{figure}
+
+The diagram reflects the core separation used throughout the system. The frontend is responsible for route flow and user interaction. The backend owns transactional business logic, authentication, protected access, and persistence-facing domain logic. The ML service owns compute-heavy analytics and model-oriented processing. Shared infrastructure supports storage, caching, and monitoring.
+
+\section{SYSTEM REQUIREMENTS}
+\subsection{User Characteristics}
+The main user categories considered in the system are listed below.
+
+\begin{table}[H]
+\centering
+\caption{Primary user categories}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.7in} X}
+\toprule
+\textbf{User Type} & \textbf{Characteristics and Needs} \\
+\midrule
+Student Investor & Requires a guided environment for learning market analysis, portfolio interpretation, and safe paper trading. \\
+Retail Research User & Needs quick access to chart data, indicators, news, fundamentals, and alerts in one place. \\
+Project Evaluator & Examines architecture, module coverage, database reasoning, and implementation quality. \\
+Developer / Maintainer & Needs modular source code, service separation, containerized setup, and readable APIs. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These user types influence the final design. For example, student investors benefit from learning modules and explainable metrics. Developers need service modularity and typed interfaces. Evaluators require strong documentation and clear separation of staged versus completed functionality.
+
+\subsection{Software and Hardware Requirements}
+\textbf{Software requirements} are shown in Table~2.2.
+
+\begin{table}[H]
+\centering
+\caption{Software requirements}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.2in} X}
+\toprule
+\textbf{Component} & \textbf{Requirement} \\
+\midrule
+Operating System & Windows, macOS, or Linux capable of running Docker and Node/Python toolchains. \\
+Frontend Runtime & Node.js environment compatible with Next.js and React [2], [3]. \\
+Backend Runtime & Python 3.11 environment for FastAPI, SQLAlchemy, and related libraries [4]. \\
+Database & PostgreSQL-compatible relational store [6]. \\
+Containerization & Docker and Docker Compose [5]. \\
+ML Runtime & Python environment with PyTorch, scikit-learn, pandas, numpy, and MLflow [7], [8]. \\
+Browser & Modern Chromium-based browser, Firefox, or Safari. \\
+Developer Tools & Git, code editor, terminal, package managers, and optional API testing tools. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Hardware requirements} are shown in Table~2.3.
+
+\begin{table}[H]
+\centering
+\caption{Indicative hardware requirements}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.2in} X}
+\toprule
+\textbf{Hardware Item} & \textbf{Indicative Requirement} \\
+\midrule
+Processor & Multi-core modern CPU (Intel i5 / Ryzen 5 or above recommended). \\
+RAM & Minimum 8 GB, 16 GB preferred for containers and ML tasks. \\
+Storage & Minimum 20 GB free storage for project files, containers, and generated artifacts. \\
+Network & Internet access for dependency installation and optional external data providers. \\
+Display & Standard laptop or desktop display; larger screen preferred for multi-panel analysis. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Constraints}
+The system operates under several constraints:
+\begin{itemize}
+\item the current implementation includes both live-service integration and representative mock data in some frontend modules;
+\item live broker connectivity is not implemented, so trading remains simulated;
+\item some security and 2FA flows are stronger in the backend than in the current frontend wiring;
+\item external market data provider availability may affect quote or news freshness;
+\item ML quality depends on training data, model weights, and further calibration work;
+\item deployment assumptions are currently centered on local Docker-based setup.
+\end{itemize}
+
+These constraints do not reduce the architectural value of the project, but they must be acknowledged to avoid overstating the maturity of the platform.
+
+\section{CONCEPTUAL MODELS}
+\subsection{Data Flow Diagram}
+The system-level data flow is represented conceptually in Fig.~2.2.
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+User Input $\rightarrow$ Frontend UI $\rightarrow$ Backend API\\[4pt]
+Backend API $\leftrightarrow$ Database / Redis\\[4pt]
+Backend API $\leftrightarrow$ ML Service\\[4pt]
+ML Service $\rightarrow$ Analytical Output $\rightarrow$ Frontend UI\\[4pt]
+Backend API $\rightarrow$ Notifications / WebSocket Events $\rightarrow$ User
+}}
+\caption{Conceptual data flow for \projectshort{}}
+\end{figure}
+
+This data flow model shows that the frontend is not a data authority; it is a consumer and presenter of validated domain logic. The backend functions as the primary coordination layer, while the ML service provides enrichments and calculations that are fed back to the frontend.
+
+\subsection{ER Diagram}
+The entity relationship logic is summarized in Fig.~2.3.
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+User $\rightarrow$ Sessions, Password History, Orders, Alerts, Strategies, Posts, Progress\\[4pt]
+Portfolio $\rightarrow$ Positions, Transactions\\[4pt]
+Stock $\rightarrow$ OHLCV Data, Fundamental Data, News References\\[4pt]
+Alert $\rightarrow$ Notifications, Alert History\\[4pt]
+Strategy $\rightarrow$ Backtest Runs
+}}
+\caption{Conceptual ER view of major entities}
+\end{figure}
+
+The actual repository defines these concepts as ORM models, providing a durable persistence layer for the platform. The ER design emphasizes clear ownership, user-specific state, and extension capability.
+
+\chapter{SYSTEM DESIGN}
+This chapter explains the design of the architecture, modules, interfaces, and database-oriented reasoning used in the project.
+
+\section{SYSTEM ARCHITECTURE}
+The architecture of \projectshort{} is closest to a layered, service-oriented web application with distinct presentation, application, analytics, and data layers. The frontend forms the presentation layer. It uses route-level modules and reusable UI components to represent business capabilities such as authentication, dashboard views, technical analysis, trading, and learning.
+
+The backend forms the core application and business-logic layer. It provides versioned REST endpoints, request validation, authenticated dependency injection, service-layer abstractions, and persistence control. Domain logic for stocks, trading, alerts, education, and social activity is separated into service classes, which improves readability and future maintainability.
+
+The ML service forms a specialized analytics layer. It exists as an independent FastAPI application because forecasting, risk computation, pattern detection, backtesting, and feature engineering are computationally different from transactional API work. This separation prevents the core backend from becoming overloaded with analytical concerns.
+
+The data layer is composed primarily of PostgreSQL-style storage and Redis support. This provides the system with a mix of durable persistence and fast-access transient support. Docker Compose ties the entire environment together and creates a local deployment topology that is easy to demonstrate and reason about [5].
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+Presentation Layer: Next.js Frontend\\[4pt]
+Business Layer: FastAPI Backend\\[4pt]
+Analytics Layer: FastAPI ML Service\\[4pt]
+Data Layer: PostgreSQL / Redis / Model Storage
+}}
+\caption{Layered architecture of \projectshort{}}
+\end{figure}
+
+\section{MODULE DESIGN}
+The overall project is divided into manageable modules, each mapped to concrete source-level routes or services.
+
+\begin{table}[H]
+\centering
+\caption{Major modules of the system}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2in} X}
+\toprule
+\textbf{Module} & \textbf{Primary Functionality} \\
+\midrule
+Authentication and Identity & Registration, login, password reset, token lifecycle, security hardening, and 2FA-related flows. \\
+Dashboard and Portfolio & High-level financial visibility, balance summaries, allocation, alerts, and performance views. \\
+Market Data and Technical Analysis & Search, OHLCV, indicators, quotes, charting, and pattern analysis. \\
+Fundamental and News Intelligence & Company metrics, valuation-oriented outputs, sentiment-enriched news, and research context. \\
+Trading and Strategy Handling & Paper order placement, position tracking, strategies, and backtest-oriented workflow entry. \\
+Alerts and Notifications & Threshold-based monitoring and user notification lifecycle. \\
+Community and Learning & Social posting, commenting, modules, lessons, and progress tracking. \\
+ML and Quantitative Analytics & Forecasting, risk metrics, recommendation, backtesting, sentiment, and pattern detection. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Authentication and Identity Module}
+This module is one of the strongest parts of the system. The backend implements password complexity checks, breach lookup logic, rate limiting, lockout behavior, token issue flows, password-history tracking, and session metadata capture. The frontend complements this with polished login, registration, forgot-password, reset-password, and 2FA setup screens.
+
+\subsection{Dashboard and Portfolio Module}
+The dashboard aggregates information from portfolio state, alerts, market movers, and AI-oriented widgets. The portfolio page organizes positions, allocation, and recent activity. This module is important because it acts as the primary summary layer for end users and shows how transactional data can be elevated into an analytical view.
+
+\subsection{Technical Analysis Module}
+This module combines stock search, quote retrieval, indicator rendering, and chart interaction. The technical page uses lightweight-charts and supports timeframe-based exploration. The backend calculates indicators server-side, while the ML service can contribute advanced pattern detection.
+
+\subsection{Fundamental and News Module}
+This module serves long-form asset research. It exposes fundamentals, valuation assumptions, health-style scoring, and company context, while the news module enriches market stories with sentiment-style tagging. Together they shift the platform from pure price monitoring to broader decision support.
+
+\subsection{Trading, Alerts, and Strategy Module}
+The trading module uses a paper-trading model rather than real brokerage execution. The broker service validates orders, simulates fills, updates positions, and records transactions. The alert service supports threshold monitoring and notifications. Strategy routes allow storage and retrieval of strategy definitions and support later backtesting.
+
+\subsection{ML and Quantitative Module}
+The ML service contains a collection of specialized analytical services rather than one monolithic endpoint. Forecasting, risk analytics, feature engineering, sentiment, recommendation, and pattern detection are separated, which makes the design clearer and better suited to future experimentation.
+
+\section{DATABASE DESIGN}
+The database design follows the domain model of a financial decision-support platform. Rather than storing only user credentials and a few stock fields, the project defines entities for portfolios, positions, transactions, alerts, notifications, strategies, backtest runs, social interactions, educational content, watchlists, sessions, and password history. This expands the utility of the platform and allows richer application behavior.
+
+\subsection{Tables and Relationships}
+The most important tables and relationships are summarized in Table~3.2.
+
+\begin{table}[H]
+\centering
+\caption{Major tables and relationships}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.9in} X}
+\toprule
+\textbf{Table / Entity} & \textbf{Relationship Notes} \\
+\midrule
+users & Parent entity for sessions, password history, strategies, orders, alerts, posts, comments, and learning progress. \\
+user\_sessions & Linked to users for session lifecycle tracking. \\
+password\_history & Linked to users to prevent password reuse. \\
+portfolio / positions / transactions & Portfolio owns positions and transactions for simulated trading state. \\
+orders / trades & User-owned order lifecycle and fill-related records. \\
+stocks / ohlcv\_data / fundamental\_data & Asset identity linked to historical and research-oriented data. \\
+alerts / notifications / alert\_history & Alert definitions linked to notification events and trigger history. \\
+strategy / backtest\_runs & Strategy definitions related to simulation outputs. \\
+posts / comments / follows / likes & Community engagement model. \\
+modules / lessons / progress / quiz tables & Learning management structure. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Data Integrity and Constraints}
+The system maintains integrity through validation at several layers:
+\begin{itemize}
+\item unique user email enforcement;
+\item typed schema validation for request and response payloads;
+\item password constraints and historical reuse blocking;
+\item user-specific resource ownership checks on orders, alerts, and notifications;
+\item relationship-driven grouping of portfolios, positions, transactions, and sessions;
+\item constrained enum-like behavior for order side, order status, alert condition, and risk profile;
+\item authenticated dependency protection for sensitive operations.
+\end{itemize}
+
+These rules are critical because fintech systems must preserve both correctness and auditability. A loosely validated design would make portfolio state unreliable and user isolation weaker.
+
+\section{SYSTEM CONFIGURATION}
+The deployment configuration uses Docker Compose to orchestrate service startup. The frontend is exposed on port 3000, the backend on port 8000, and the ML service on port 8001. PostgreSQL-style storage and Redis are available as supporting services, while MLflow and Flower contribute experiment and monitoring support. This configuration reduces environment inconsistency and simplifies project demonstration.
+
+\section{INTERFACE AND PROCEDURAL DESIGN}
+\subsection{User Interface Design}
+The user interface follows a route-driven modular design. Authentication screens are visually separated from dashboard routes. The dashboard shell provides navigation into portfolio, technical, fundamental, news, trade, strategy, backtest, risk, alert, community, and learning pages. This route organization improves discoverability and creates natural mapping between user intent and system capability.
+
+Important UI qualities include:
+\begin{itemize}
+\item a clear dashboard-first landing experience after authentication;
+\item focused task screens rather than overloaded single-page design;
+\item chart-oriented views for market understanding;
+\item card-based presentation for financial summaries and alerts;
+\item forms that align with backend validation flows;
+\item visual differentiation between analysis, trading, and learning modules.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+Sidebar Navigation\\[4pt]
+Dashboard | Portfolio | Technical | Fundamental | News | Trade | Strategies\\[4pt]
+Backtest | Risk | Alerts | Community | Learn
+}}
+\caption{Conceptual layout of the main user interface}
+\end{figure}
+
+\subsection{Application Flow / Class Diagram}
+The application flow begins with authentication and then branches into protected user workflows. A typical path is:
+\begin{enumerate}[label=\arabic*.]
+\item user logs in;
+\item frontend stores or uses token context;
+\item user opens a route such as technical analysis;
+\item frontend fetches data from the backend;
+\item backend validates the request and either retrieves persisted state or calls the ML service;
+\item response is returned to the frontend for rendering;
+\item user may create an alert, strategy, or trade action based on the analysis.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\fbox{
+\parbox{0.88\textwidth}{
+\centering
+Login $\rightarrow$ Dashboard $\rightarrow$ Research Module $\rightarrow$ Decision Action\\[4pt]
+Decision Action $\rightarrow$ Order / Alert / Strategy / Observation\\[4pt]
+Order / Alert / Strategy $\rightarrow$ Backend Processing $\rightarrow$ Updated State
+}}
+\caption{Simplified application flow}
+\end{figure}
+
+\section{REPORTS DESIGN}
+The system can support multiple categories of reports:
+\begin{itemize}
+\item user-centric financial summary reports;
+\item transaction and order history reports;
+\item alert history reports;
+\item strategy and backtest summary reports;
+\item technical analysis snapshots;
+\item fundamental analysis summaries;
+\item model or risk output summaries.
+\end{itemize}
+
+Inputs to such reports can include user identity, selected asset, date range, strategy identifier, or analysis type. Output fields may include symbol, timestamps, price metrics, indicator values, portfolio exposures, risk measures, and recommendation summaries. The presence of structured domain entities makes report generation feasible even where the current UI has not fully implemented each report type.
+
+\chapter{IMPLEMENTATION}
+This chapter explains the implementation strategy, standards, and representative technical details of the project.
+
+\section{IMPLEMENTATION APPROACHES}
+The implementation approach followed in \projectshort{} is modular and incremental. The project does not appear to have been built as one monolithic code unit. Instead, it has been structured in separate layers: frontend routes and components, backend routers and services, and ML endpoints and service classes. This divide-and-conquer approach reduces the complexity of the project and supports staged integration.
+
+The frontend implementation approach emphasizes route-level modularity and reusable UI components. Components such as ticker search, chart widgets, dashboard cards, and order-book views are designed to support multiple user journeys without duplicating core UI behavior. This improves maintainability and consistency.
+
+The backend implementation approach emphasizes versioned routers, schema validation, dependency-based authentication, service-layer logic, and ORM-backed models. This keeps endpoint files manageable and allows domain logic to evolve independently of route definitions. It also improves testability because services can be reasoned about separately.
+
+The ML implementation approach emphasizes service isolation. Risk, prediction, feature engineering, sentiment, fundamental analysis, backtesting, and pattern detection are exposed through separate endpoint or service definitions. This is a strong design choice because it reduces coupling and makes future experimentation easier.
+
+\section{CODING STANDARD}
+The coding style visible in the repository follows several positive standards:
+\begin{itemize}
+\item descriptive file organization by domain;
+\item separation of models, schemas, services, and endpoints in the backend;
+\item TypeScript-based typing in frontend pages and components where appropriate;
+\item environment-based configuration for service URLs and runtime settings;
+\item consistent use of asynchronous patterns in the backend;
+\item named routes and componentized UI structures in the frontend;
+\item predictable service naming in the ML layer.
+\end{itemize}
+
+The project also shows conscious use of established libraries rather than unnecessary reinvention. Next.js and React are used for frontend structure [2], [3], FastAPI for service APIs [4], PostgreSQL-style storage for persistence [6], Docker for environment consistency [5], and PyTorch for model-centric workflows [7]. This is aligned with practical engineering standards.
+
+\section{CODING DETAILS}
+The following implementation areas are especially important from a coding perspective.
+
+\subsection{Authentication Logic}
+The backend authentication flow demonstrates a secure coding mindset. Registration verifies uniqueness, checks password quality, consults breach logic, hashes passwords, and stores password history. Login logic considers failed attempts and lockouts before issuing tokens. Two-factor login is handled as a second verification step. Password reset also checks password history and invalidates prior sessions.
+
+\subsection{Stock and Data Services}
+The stock service combines database queries with fallback live retrieval patterns. This is an effective approach for a draft system because it supports both seeded and external data usage. The indicator logic calculates moving averages, RSI, MACD, and Bollinger bands server-side, reducing frontend complexity.
+
+\subsection{Trading Logic}
+The broker service is notable because it models cash balance, order creation, fill status, position updates, and transaction logging. Even though it is a paper-trading implementation, it follows a structured transaction model that would be useful in future real-execution migration.
+
+\subsection{ML Logic}
+The prediction service uses a sequence-based LSTM workflow for next-price forecasting, while the risk service computes aligned asset returns and portfolio metrics. Pattern detection combines algorithmic logic with deeper model-oriented logic. This demonstrates that the analytics layer is not superficial; it contains multiple computational pathways.
+
+\section{SCREEN SHOTS}
+At the draft-report stage, screenshots should be inserted after final UI selection and before the final bound submission. To keep the report editable and aligned with this draft status, screen placeholders are provided here.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.82\textwidth}{\centering Placeholder for Login Screen Screenshot}}
+\caption{Draft placeholder for login screen}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.82\textwidth}{\centering Placeholder for Dashboard Screenshot}}
+\caption{Draft placeholder for dashboard screen}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.82\textwidth}{\centering Placeholder for Technical Analysis Screenshot}}
+\caption{Draft placeholder for technical analysis screen}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.82\textwidth}{\centering Placeholder for Fundamental Analysis Screenshot}}
+\caption{Draft placeholder for fundamental analysis screen}
+\end{figure}
+
+\chapter{TESTING}
+This chapter discusses the testing thought process, test cases, and expected system behavior under selected scenarios.
+
+\section{TEST CASES}
+The testing strategy for this project must validate both standard software behavior and finance-oriented state transitions. Selected test cases are shown in Table~5.1.
+
+\begin{table}[H]
+\centering
+\caption{Representative test cases}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.8in} >{\raggedright\arraybackslash}p{2.3in} X}
+\toprule
+\textbf{TC No.} & \textbf{Scenario} & \textbf{Expected Result} \\
+\midrule
+TC1 & Register with strong password & User account created successfully and password history initialized. \\
+TC2 & Register with weak password & Validation error returned with password rule explanation. \\
+TC3 & Login with valid credentials & Access token issued; refresh token issued when applicable. \\
+TC4 & Login with repeated invalid password & Failed attempts increment and temporary lockout eventually applied. \\
+TC5 & Reset password using previously used password & Request rejected due to password history check. \\
+TC6 & Search for supported ticker & Matching stock list returned from DB or curated list. \\
+TC7 & Fetch OHLCV for known stock & Candle series returned in expected format. \\
+TC8 & Create paper buy order with sufficient funds & Order created and portfolio state updated. \\
+TC9 & Create sell order without holdings & Order rejected with insufficient shares message. \\
+TC10 & Create alert and cross threshold & Alert transitions to triggered state and notification is created. \\
+TC11 & Request ML risk analysis & Risk metrics and interpretation payload returned. \\
+TC12 & Access protected endpoint without token & Unauthorized response returned. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{TESTING APPROACHES}
+\subsection{Unit Testing}
+Unit testing should verify the internal correctness of service-level functions. Examples include password validation logic, indicator computation, risk metric calculations, recommendation scoring, and order-state transitions. This is especially useful because the project already uses service classes that separate domain logic from HTTP routing.
+
+\subsection{Integration Testing}
+Integration testing should validate endpoint behavior across multiple layers. Examples include login followed by access to a protected route, order placement followed by position retrieval, or stock fetch followed by technical indicator retrieval. Integration testing is also necessary for alert creation and subsequent notification handling.
+
+\subsection{Interface and Workflow Testing}
+Since the system includes a substantial frontend, UI-driven flows should be checked for login, navigation, data loading, alert creation, strategy creation, and chart interaction. This is particularly important for modules that combine data from backend and ML services.
+
+\section{TEST REPORTS}
+The current repository snapshot suggests a manually verified draft implementation rather than a fully test-automated one. Therefore, the test report discussion in this draft focuses on expected outcomes, probable observations, and key quality gaps.
+
+\begin{table}[H]
+\centering
+\caption{Sample test report summary}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.2in} X}
+\toprule
+\textbf{Test Area} & \textbf{Report Summary} \\
+\midrule
+Authentication & Backend logic is strong and suitable for positive and negative flow testing, especially for lockouts and resets. \\
+Market Data & Search, quote, and OHLCV flows are structurally testable and aligned with route design. \\
+Trading & Paper-trading logic supports state-transition testing but would benefit from deterministic simulation inputs. \\
+Alerts & Trigger flow is conceptually clear and suitable for scenario-based verification. \\
+ML Service & Endpoint-level contract testing is needed to validate input-output stability. \\
+Frontend Integration & Some screens use mock data and require retesting after deeper live integration. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Overall, the testing posture of the system is promising because the architecture supports testing well, but the project still needs more explicit automated test coverage to strengthen confidence before a final-release claim can be made.
+
+\chapter{CONCLUSION}
+This chapter summarizes the design and implementation issues, the advantages and limitations of the system, and the future scope of the project.
+
+\section{DESIGN AND IMPLEMENTATION ISSUES}
+The design of \projectshort{} had to balance breadth with feasibility. One major design challenge is requirements volatility. In a project that combines research, trading, alerts, education, community, and ML analytics, it is easy for the scope to expand beyond what can be fully integrated in one cycle. The selected architecture solves this partially by separating modules and services, but it also introduces the challenge of maintaining consistent behavior across them.
+
+Another design issue is the need to support security, usability, and analytical richness at the same time. A fintech platform cannot focus only on attractive charts; it must also handle identity, validation, and stateful user data correctly. The backend shows strong effort in this area, but some frontend flows still need tighter connection to the secure backend behavior.
+
+Implementation issues include environment setup, dependency management, model-runtime requirements, and local orchestration complexity. Multi-service systems are more realistic but also more difficult to run and debug. The need to coordinate frontend, backend, ML service, database, Redis, and optional supporting services increases the operational burden during development and testing.
+
+\section{ADVANTAGES AND LIMITATIONS}
+\subsection{Advantages}
+The project provides several strong advantages:
+\begin{itemize}
+\item secure user management is significantly better than what is seen in many academic prototypes;
+\item the architecture is modular and professionally structured;
+\item the platform covers a wide range of financial workflows in one system;
+\item the ML component is integrated as a service rather than a disconnected demo;
+\item the database design supports future growth across multiple modules;
+\item the system is suitable for demonstration, extension, and academic evaluation.
+\end{itemize}
+
+\subsection{Limitations}
+The draft implementation also has important limitations:
+\begin{itemize}
+\item some UI modules still rely on mock or partially integrated data;
+\item live broker execution is not available;
+\item some frontend flows, especially 2FA setup, need stronger linkage to the implemented backend security routes;
+\item automated testing is not yet extensive enough for high-confidence release claims;
+\item ML quality and reliability depend on further dataset, training, and calibration work;
+\item production deployment concerns such as secret management and observability require more maturity.
+\end{itemize}
+
+\section{FUTURE SCOPE OF THE PROJECT}
+The future scope of \projectshort{} is substantial. The first priority is fuller integration of all frontend modules with their backend and ML counterparts so that representative mock values are replaced by live application state. The second priority is stronger automated testing across authentication, trading, alerts, and analytical endpoints.
+
+Beyond that, the platform can evolve toward live broker integration, richer market-feed ingestion, persistent watchlist-driven analytics, more advanced strategy simulation, and stronger model lifecycle management through experiment tracking and versioned deployment. The educational and community modules can also be expanded to support broader user engagement and learning outcomes.
+
+In conclusion, the aim of the project was to build a data-centric platform for investment analytics and financial market decision support, and the current draft implementation meaningfully achieves that goal through secure access, market-data workflows, analytics services, and modular design. The major modules already show clear value, while the remaining limitations identify a practical roadmap for future enhancement.
+
+% --------------------------------------------------
+% Appendices
+% --------------------------------------------------
+\appendix
+\chapter{USER'S MANUAL}
+\section{System Setup}
+To run the project locally, the user must first ensure that Docker is installed and active. The project repository should be cloned from \url{\repolink}. After entering the repository root, the standard startup flow uses Docker Compose to build and start the frontend, backend, ML service, database, Redis, MLflow, and Flower components.
+
+\section{Operating the System}
+After the services start, the user accesses the frontend in a browser. A new user can register, log in, and navigate to the dashboard. Research workflows begin with stock search and move into technical, fundamental, or news modules. Decision-support workflows continue into alerts, strategies, backtest, or paper trading depending on user intent.
+
+\section{Maintenance Notes}
+Because the application is multi-service, maintenance includes checking service logs, verifying database availability, confirming environment variables, and ensuring that container ports do not conflict. Model-oriented features also require attention to ML-service dependencies and any future trained weight files.
+
+\chapter{SUPPORTING TABLES AND PLANNING DETAILS}
+\section{Indicative Development Plan}
+\begin{table}[H]
+\centering
+\caption{Indicative project plan}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.8in} X}
+\toprule
+\textbf{Phase} & \textbf{Activities} \\
+\midrule
+Planning & Problem identification, scope definition, architecture planning, and module decomposition. \\
+Core Development & Auth, backend structure, data model, frontend routes, and service scaffolding. \\
+Analytics Integration & Indicator logic, risk logic, forecasting, fundamentals, and pattern detection. \\
+Testing and Review & Manual validation, defect fixing, UI refinement, and report preparation. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Design-Concept Considerations}
+Health and safety concerns are low in direct physical terms because the project is software-based, but security and data trust act as the digital equivalent of safety concerns. Usability has been considered through route grouping and visual task separation. Scalability has been considered through service decomposition. Reliability has been considered through persistent models, validation, and protected routes.
+
+% --------------------------------------------------
+% References
+% --------------------------------------------------
+\chapter*{REFERENCES}
+\addcontentsline{toc}{chapter}{References}
+[1] E, Abhijith. ``fintechphase2.'' GitHub. 25 Mar. 2026. \url{https://github.com/Abhijith-E/fintechphase2}.
+
+[2] Vercel. ``Next.js Docs.'' Next.js. 25 Mar. 2026. \url{https://nextjs.org/docs}.
+
+[3] Meta Open Source. ``React.'' React. 25 Mar. 2026. \url{https://react.dev/}.
+
+[4] Ram\'irez, Sebasti\'an. ``FastAPI.'' FastAPI. 25 Mar. 2026. \url{https://fastapi.tiangolo.com/}.
+
+[5] Docker Inc. ``Docker Docs.'' Docker. 25 Mar. 2026. \url{https://docs.docker.com/}.
+
+[6] PostgreSQL Global Development Group. ``PostgreSQL Documentation.'' PostgreSQL. 25 Mar. 2026. \url{https://www.postgresql.org/docs/}.
+
+[7] PyTorch Contributors. ``PyTorch Documentation.'' PyTorch. 25 Mar. 2026. \url{https://docs.pytorch.org/docs/stable/index.html}.
+
+[8] MLflow Contributors. ``MLflow Documentation.'' MLflow. 25 Mar. 2026. \url{https://mlflow.org/docs/latest/index.html}.
+
+\end{document}

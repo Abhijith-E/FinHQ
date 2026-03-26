@@ -39,7 +39,7 @@ export function OverviewChart() {
                             fontSize={12}
                             tickLine={false}
                             axisLine={false}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => `₹${value}`}
                         />
                         <Tooltip />
                         <Line

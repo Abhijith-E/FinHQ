@@ -81,9 +81,9 @@ manager = ConnectionManager()
 # ─── GBM Price Simulation ────────────────────────────────────────────────────
 
 _price_state: Dict[str, float] = {
-    "AAPL": 175.0, "MSFT": 380.0, "GOOGL": 140.0, "AMZN": 185.0,
-    "TSLA": 250.0, "NVDA": 800.0, "META": 490.0, "BRK.B": 390.0,
-    "JPM": 200.0, "V": 280.0
+    "RELIANCE.NS": 3000.0, "TCS.NS": 4000.0, "HDFCBANK.NS": 1600.0, "INFY.NS": 1650.0,
+    "ICICIBANK.NS": 1050.0, "SBIN.NS": 750.0, "BHARTIARTL.NS": 1150.0, "ITC.NS": 450.0,
+    "LT.NS": 3600.0, "HINDUNILVR.NS": 2400.0
 }
 
 def _next_tick(ticker: str) -> dict:

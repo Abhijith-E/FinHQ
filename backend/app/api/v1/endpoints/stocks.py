@@ -1,6 +1,10 @@
 """
 Enhanced Stocks API: OHLCV data, indicators, search, and fundamental data.
 Includes TimescaleDB time-bucket querying and server-side indicator calculation.
+
+ROUTE ORDER IS CRITICAL: Specific paths (/search, /market-movers, /index-stocks)
+MUST come before the parameterised path (/{ticker}) or FastAPI will treat them
+as ticker values and the correct handler will never be reached.
 """
 from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,9 +17,12 @@ from app import schemas, models
 from app.api import deps
 from app.db.session import get_db
 from app.services.stock_data_service import stock_data_service
+from app.core.indian_stocks import ALL_INDIAN_STOCKS
 
 router = APIRouter()
 
+
+# ─── Non-parametric routes FIRST ────────────────────────────────────────────
 
 @router.get("/search", response_model=List[schemas.Stock])
 async def search_stocks(
@@ -24,20 +31,71 @@ async def search_stocks(
     current_user: models.User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
-    Search for stocks by ticker or company name using full-text ILIKE matching.
+    Search for stocks by ticker or company name.
+    First searches the DB, then falls back to the master index list.
     """
     stmt = select(models.Stock).where(
         (models.Stock.ticker.ilike(f"%{q}%")) | (models.Stock.name.ilike(f"%{q}%"))
-    ).limit(20)
+    ).limit(30)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    db_stocks = list(result.scalars().all())
+
+    # Supplement DB results with master index (stocks not yet seeded)
+    db_tickers = {s.ticker for s in db_stocks}
+    q_lower = q.lower()
+    extra = [
+        schemas.Stock(
+            id=0,
+            ticker=s["ticker"],
+            name=s["name"],
+            sector=s.get("sector", "N/A"),
+            industry=s.get("industry", "N/A"),
+            is_active=True,
+        )
+        for s in ALL_INDIAN_STOCKS
+        if s["ticker"] not in db_tickers and (
+            q_lower in s["ticker"].lower() or q_lower in s["name"].lower()
+        )
+    ][:20]
+
+    combined = db_stocks + extra
+    return combined[:30]
+
+
+@router.get("/market-movers", response_model=None)
+async def get_market_movers(
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Get top market gainers and losers.
+    Uses real yfinance data with simulation fallback.
+    """
+    return await stock_data_service.get_market_movers()
+
+
+@router.get("/index-stocks", response_model=None)
+async def get_index_stocks(
+    index: str = Query("all", description="Filter by index: 'nifty', 'sensex', or 'all'"),
+    current_user: models.User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Returns the master list of Nifty 100 + Sensex 30 stocks.
+    This always returns 120 stocks regardless of what is seeded in the DB.
+    Used by the frontend dropdown for instant offline display.
+    """
+    from app.core.indian_stocks import NIFTY_100, SENSEX_30
+    if index == "nifty":
+        return {"stocks": NIFTY_100, "count": len(NIFTY_100), "exchange": "NSE"}
+    elif index == "sensex":
+        return {"stocks": SENSEX_30, "count": len(SENSEX_30), "exchange": "BSE"}
+    return {"stocks": ALL_INDIAN_STOCKS, "count": len(ALL_INDIAN_STOCKS), "exchange": "NSE+BSE"}
 
 
 @router.get("/", response_model=List[schemas.Stock])
 async def list_stocks(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user),
-    limit: int = Query(50, le=200),
+    limit: int = Query(200, le=500),
     offset: int = Query(0, ge=0)
 ) -> Any:
     """
@@ -48,6 +106,8 @@ async def list_stocks(
     )
     return result.scalars().all()
 
+
+# ─── Parametric routes AFTER specific routes ─────────────────────────────────
 
 @router.get("/{ticker}", response_model=schemas.Stock)
 async def get_stock_details(
@@ -84,40 +144,51 @@ async def get_stock_details(
 @router.get("/{ticker}/ohlcv")
 async def get_stock_ohlcv(
     ticker: str,
-    interval: str = Query("1d", description="Timeframe: 1d, 1h, 15m"),
+    interval: str = Query("1d", description="Timeframe: 1d, 1wk, 1h, 15m, 30m"),
     limit: int = Query(200, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
-    Get OHLCV candlestick data for a stock, queried from TimescaleDB.
-    Generates simulated data if historical data is not yet available in DB.
+    Get OHLCV candlestick data for a stock.
+    Bypasses DB for intraday intervals to get fresh data from yfinance.
     """
-    # Try to query from TimescaleDB ohlcv_data table
     stock_result = await db.execute(select(models.Stock).where(models.Stock.ticker == ticker.upper()))
     stock = stock_result.scalars().first()
 
     if not stock:
-        raise HTTPException(status_code=404, detail="Stock not found")
+        # Auto-create if in master index
+        idx = next((s for s in ALL_INDIAN_STOCKS if s["ticker"] == ticker.upper()), None)
+        if idx:
+            stock = models.Stock(
+                ticker=idx["ticker"], name=idx["name"],
+                sector=idx["sector"], industry=idx["industry"], is_active=True
+            )
+            db.add(stock)
+            await db.commit()
+            await db.refresh(stock)
+        else:
+            raise HTTPException(status_code=404, detail="Stock not found")
 
-    # Query from ohlcv_data table
-    query = text("""
-        SELECT time, open, high, low, close, volume
-        FROM ohlcv_data
-        WHERE stock_id = :stock_id
-        ORDER BY time DESC
-        LIMIT :limit
-    """)
-    result = await db.execute(query, {"stock_id": stock.id, "limit": limit})
-    rows = result.fetchall()
+    # If asking for daily or weekly, try TimescaleDB first
+    if interval in ("1d", "1wk"):
+        query = text("""
+            SELECT time, open, high, low, close, volume
+            FROM ohlcv_data
+            WHERE stock_id = :stock_id
+            ORDER BY time DESC
+            LIMIT :limit
+        """)
+        result = await db.execute(query, {"stock_id": stock.id, "limit": limit})
+        rows = result.fetchall()
 
-    if rows:
-        candles = [{"time": row[0].isoformat(), "open": row[1], "high": row[2], "low": row[3], "close": row[4], "volume": row[5]} for row in rows]
-        return {"ticker": ticker.upper(), "interval": interval, "data": list(reversed(candles))}
+        if rows:
+            candles = [{"time": row[0].isoformat(), "open": row[1], "high": row[2], "low": row[3], "close": row[4], "volume": row[5]} for row in rows]
+            return {"ticker": ticker.upper(), "interval": interval, "data": list(reversed(candles))}
 
-    # Fall back to yfinance/simulated data if no historical data in DB
-    mock_data = await stock_data_service.fetch_historical_data(ticker, limit=limit, interval=interval)
-    return {"ticker": ticker.upper(), "interval": interval, "data": mock_data}
+    # Fall back to yfinance for intraday / missing DB data
+    data = await stock_data_service.fetch_historical_data(ticker, limit=limit, interval=interval)
+    return {"ticker": ticker.upper(), "interval": interval, "data": data}
 
 
 @router.get("/{ticker}/indicators")
@@ -131,7 +202,6 @@ async def get_stock_indicators(
     Compute technical indicators server-side using pandas.
     Supported: sma{n}, ema{n}, rsi, macd, bb (Bollinger Bands).
     """
-    # Get OHLCV data
     candles_response = await get_stock_ohlcv(ticker, "1d", 300, db, current_user)
     candles = candles_response.get("data", [])
 
@@ -187,6 +257,44 @@ async def get_stock_quote(
     current_user: models.User = Depends(deps.get_current_active_user)
 ) -> Any:
     """
-    Get latest simulated quote for a stock (bid, ask, last price, change).
+    Get latest live quote for a stock (bid, ask, last price, change).
+    Uses yfinance fast_info with simulation fallback.
     """
     return await stock_data_service.get_live_quote(ticker)
+
+
+@router.get("/{ticker}/fundamentals")
+async def get_stock_fundamentals(
+    ticker: str,
+    current_user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Get fundamental metrics (PE, PB, Market Cap, Valuation) for a stock.
+    """
+    return await stock_data_service.fetch_fundamentals(ticker)
+
+
+@router.get("/index-performance")
+async def get_index_performance(
+    symbol: str = "^NSEI",
+    current_user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Get historical data for a market index (e.g. ^NSEI, ^BSESN).
+    Used for dashboard sparklines.
+    """
+    return await stock_data_service.get_index_data(symbol)
+
+
+@router.get("/{ticker}/news")
+async def get_stock_news(
+    ticker: str,
+    current_user: models.User = Depends(deps.get_current_active_user)
+) -> Any:
+    """
+    Get latest news for a specific stock.
+    """
+    return await stock_data_service.get_stock_news(ticker)
+
+
+

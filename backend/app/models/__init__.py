@@ -1,4 +1,5 @@
 from .user import User
+from .password_history import PasswordHistory
 from .session import UserSession
 from .stock import Stock, OHLCVData, FundamentalData
 from .portfolio import Portfolio, Transaction, Position

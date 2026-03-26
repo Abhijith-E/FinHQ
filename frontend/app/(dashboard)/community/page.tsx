@@ -13,9 +13,9 @@ export default function CommunityPage() {
 
     // Mock Feed
     const [posts, setPosts] = useState([
-        { id: 1, author: "Alice_Quant", title: "Why I'm rotating into semi-conductors now", content: "The new global supply chain data suggests a massive bottleneck clears up next quarter. AAPL and NVDA are primed.", ticker: "NVDA", likes: 24, comments: 8, timestamp: "2h ago", avatar: "AQ" },
+        { id: 1, author: "Alice_Quant", title: "Why I'm rotating into semi-conductors now", content: "The new global supply chain data suggests a massive bottleneck clears up next quarter. RELIANCE.NS and TCS.NS are primed.", ticker: "TCS.NS", likes: 24, comments: 8, timestamp: "2h ago", avatar: "AQ" },
         { id: 2, author: "Bobby_Bulls", title: "Market Correction Incoming?", content: "RSI is massively overbought on the SPY daily timeframe. I'm scaling out of my long positions.", ticker: "SPY", likes: 12, comments: 14, timestamp: "4h ago", avatar: "BB" },
-        { id: 3, author: "CryptoWhale", title: "ETH Breakout structure forming", content: "Classic cup and handle on the 4H chart. Target $3,200.", ticker: "ETH-USD", likes: 89, comments: 22, timestamp: "5h ago", avatar: "CW" },
+        { id: 3, author: "CryptoWhale", title: "ETH Breakout structure forming", content: "Classic cup and handle on the 4H chart. Target ₹3,200.", ticker: "ETH-USD", likes: 89, comments: 22, timestamp: "5h ago", avatar: "CW" },
     ])
 
     const createPost = () => {
@@ -55,7 +55,7 @@ export default function CommunityPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <Input
-                                placeholder="Title (e.g., Bullish on TSLA)"
+                                placeholder="Title (e.g., Bullish on ICICIBANK.NS)"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-indigo-500"

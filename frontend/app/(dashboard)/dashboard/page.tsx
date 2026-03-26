@@ -30,18 +30,18 @@ export default function DashboardPage() {
             {/* Middle Row: AI & Analytics */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-4">
                 {/* 4 columns for AI Briefing */}
-                <div className="lg:col-span-4 h-full">
+                <div className="lg:col-span-4">
                     <AIBriefing />
                 </div>
                 {/* 3 columns for Allocation */}
-                <div className="lg:col-span-3 h-[300px]">
+                <div className="lg:col-span-3">
                     <PortfolioAllocation />
                 </div>
             </div>
 
             {/* Bottom Row: Market Context */}
             <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-1 mt-4">
-                <div className="h-[400px]">
+                <div className="min-h-[400px]">
                     <MarketMovers />
                 </div>
             </div>

@@ -5,6 +5,19 @@ class Token(BaseModel):
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str
+    requires_2fa: Optional[bool] = False
+    message: Optional[str] = None
+
+class Verify2FA(BaseModel):
+    token: str
+    code: str
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
 
 class TokenPayload(BaseModel):
     sub: Optional[str] = None

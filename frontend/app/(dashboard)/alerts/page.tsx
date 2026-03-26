@@ -16,13 +16,13 @@ export default function AlertsPage() {
 
     // Mock Data
     const [alerts, setAlerts] = useState([
-        { id: 1, ticker: "AAPL", condition: "BELOW", target: 145.00, status: "ACTIVE" },
-        { id: 2, ticker: "TSLA", condition: "ABOVE", target: 250.00, status: "TRIGGERED" },
+        { id: 1, ticker: "RELIANCE.NS", condition: "BELOW", target: 145.00, status: "ACTIVE" },
+        { id: 2, ticker: "ICICIBANK.NS", condition: "ABOVE", target: 250.00, status: "TRIGGERED" },
         { id: 3, ticker: "ETH-USD", condition: "BELOW", target: 2800.00, status: "ACTIVE" },
     ])
 
     const [notifications, setNotifications] = useState([
-        { id: 1, title: "TSLA Target Hit", message: "TSLA crossed above $250.00", time: "2 hours ago" },
+        { id: 1, title: "ICICIBANK.NS Target Hit", message: "ICICIBANK.NS crossed above ₹250.00", time: "2 hours ago" },
         { id: 2, title: "BTC Volatility", message: "BTC dropped 5% in 1 hour", time: "5 hours ago" },
         { id: 3, title: "System", message: "New strategy deployed successfully", time: "1 day ago" }
     ])

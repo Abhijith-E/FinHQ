@@ -21,12 +21,19 @@ class User(Base):
     
     # New auth and profile fields
     is_verified = Column(Boolean, default=False)
+    is_2fa_enabled = Column(Boolean, default=False)
     totp_secret = Column(String, nullable=True)
+    
+    failed_login_attempts = Column(Integer, default=0)
+    lockout_until = Column(DateTime, nullable=True)
+    password_changed_at = Column(DateTime, default=datetime.utcnow)
+    
     risk_profile = Column(Enum(RiskProfile), default=RiskProfile.MEDIUM)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
 
     # Relationships are handled via backrefs in other models or explicitly here
+    password_history = relationship("PasswordHistory", back_populates="user", order_by="desc(PasswordHistory.created_at)")
     sessions = relationship("UserSession", back_populates="user")
     strategies = relationship("Strategy", back_populates="owner")
     orders = relationship("Order", back_populates="owner")

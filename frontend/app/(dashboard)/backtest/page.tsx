@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TradingChart } from "@/components/trading-chart"
+import { TickerSearch } from "@/components/ticker-search"
+import { Play, FlaskConical, LayoutDashboard, Settings } from "lucide-react"
 
 // Mock Result
 const MOCK_RESULT = {
@@ -32,7 +34,7 @@ export default function BacktestPage() {
     const [running, setRunning] = useState(false)
     const [result, setResult] = useState<any>(null)
     const [strategy, setStrategy] = useState("MACD Crossover")
-    const [ticker, setTicker] = useState("AAPL")
+    const [ticker, setTicker] = useState("RELIANCE.NS")
 
     const runSimulation = () => {
         setRunning(true)
@@ -89,15 +91,10 @@ export default function BacktestPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-300">Target Asset</label>
-                            <select
-                                value={ticker}
-                                onChange={(e) => setTicker(e.target.value)}
-                                className="w-full bg-slate-800 border items-center border-slate-700 text-white text-sm rounded-lg focus:ring-indigo-500 block p-2.5 outline-none"
-                            >
-                                <option value="AAPL">AAPL - Apple Inc.</option>
-                                <option value="MSFT">MSFT - Microsoft Corp.</option>
-                                <option value="NVDA">NVDA - NVIDIA Corp.</option>
-                            </select>
+                            <div className="flex flex-col gap-2">
+                                <TickerSearch value={ticker} onChange={(val) => setTicker(val)} />
+                                <p className="text-[10px] text-slate-500">Selected: {ticker}</p>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-300">Date Range</label>
@@ -125,6 +122,7 @@ export default function BacktestPage() {
                         </div>
                     </CardContent>
                 </Card>
+
 
                 {/* Results Panel */}
                 <div className="col-span-12 lg:col-span-9 space-y-4">

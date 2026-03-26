@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useWebSocket } from "@/hooks/use-websocket";
 
 interface OrderBookLevel {
     price: number;
@@ -11,13 +11,13 @@ interface OrderBookLevel {
 }
 
 export function OrderBook({ ticker }: { ticker: string }) {
-    const { subscribe } = useWebSocket();
+    const { data: session, status } = useSession();
     const [bids, setBids] = useState<OrderBookLevel[]>([]);
     const [asks, setAsks] = useState<OrderBookLevel[]>([]);
     const [lastPrice, setLastPrice] = useState(0);
 
     useEffect(() => {
-        // Generate some mock initial data based on ticker
+        let isMounted = true;
         const generateMockLevels = (startPrice: number, isBid: boolean) => {
             let total = 0;
             return Array.from({ length: 15 }).map((_, i) => {
@@ -28,40 +28,52 @@ export function OrderBook({ ticker }: { ticker: string }) {
             });
         };
 
-        const basePrice = ticker === "AAPL" ? 150 : ticker === "TSLA" ? 200 : 100;
-        setLastPrice(basePrice);
-        setBids(generateMockLevels(basePrice - 0.5, true));
-        setAsks(generateMockLevels(basePrice + 0.5, false).reverse()); // Asks shown descending towards spread
+        const fetchPriceAndSetup = async () => {
+            const token = (session as any)?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem("access_token") : null);
+            if (status === "loading" || (!session && !token)) return;
+            
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/stocks/${ticker}/quote`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok && isMounted) {
+                    const data = await res.json();
+                    const price = data.last_price || data.price || 150;
+                    setLastPrice(price);
+                    setBids(generateMockLevels(price - 0.5, true));
+                    setAsks(generateMockLevels(price + 0.5, false).reverse()); // Asks shown descending towards spread
+                }
+            } catch (err) {}
+        };
 
-        const unsubscribe = subscribe(`orderbook:${ticker}`, (data) => {
-            if (data.type === "orderbook_update") {
-                if (data.bids) setBids(data.bids);
-                if (data.asks) setAsks(data.asks);
-                if (data.last_price) setLastPrice(data.last_price);
-            }
-        });
+        fetchPriceAndSetup();
+        const priceInterval = setInterval(fetchPriceAndSetup, 3000);
 
-        // Jitter function for mock
-        const interval = setInterval(() => {
+        // Jitter function for mock order depth visual effect
+        const jitterInterval = setInterval(() => {
+            if (!isMounted) return;
             setBids(prev => {
+                if (prev.length === 0) return prev;
                 const newBids = [...prev];
-                const idx = Math.floor(Math.random() * 5);
+                const idx = Math.floor(Math.random() * Math.min(5, newBids.length));
                 newBids[idx] = { ...newBids[idx], size: Math.floor(Math.random() * 500) + 10 };
                 return newBids;
             });
             setAsks(prev => {
+                if (prev.length === 0) return prev;
                 const newAsks = [...prev];
-                const idx = Math.floor(Math.random() * 5);
+                const idx = Math.floor(Math.random() * Math.min(5, newAsks.length));
                 newAsks[idx] = { ...newAsks[idx], size: Math.floor(Math.random() * 500) + 10 };
                 return newAsks;
             });
         }, 1000);
 
         return () => {
-            unsubscribe();
-            clearInterval(interval);
+            isMounted = false;
+            clearInterval(priceInterval);
+            clearInterval(jitterInterval);
         }
-    }, [ticker, subscribe]);
+    }, [ticker, session, status]);
 
     const maxTotal = Math.max(
         (bids[bids.length - 1]?.total || 0),
@@ -69,55 +81,62 @@ export function OrderBook({ ticker }: { ticker: string }) {
     );
 
     return (
-        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl h-full flex flex-col font-mono text-sm">
-            <CardHeader className="py-3 border-b border-slate-800">
-                <CardTitle className="text-sm font-medium text-slate-300">Order Book ({ticker})</CardTitle>
+        <Card className="border-none bg-[#1a1a1a] h-full flex flex-col font-mono text-[11px] text-slate-400">
+            <CardHeader className="py-2 px-4 border-b border-slate-800/50 bg-[#1a1a1a]">
+                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex justify-between items-center">
+                    <span>Order Book</span>
+                    <span className="text-indigo-500 font-mono">L2 DATA</span>
+                </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 p-0 flex flex-col">
+            <CardContent className="flex-1 p-0 flex flex-col min-h-0">
 
                 {/* Header */}
-                <div className="flex justify-between px-4 py-2 text-xs text-slate-500 border-b border-slate-800/50">
+                <div className="flex justify-between px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-600 border-b border-slate-800/30">
                     <div className="w-1/3">Price</div>
                     <div className="w-1/3 text-right">Size</div>
                     <div className="w-1/3 text-right">Total</div>
                 </div>
 
-                {/* Asks (Sell Orders) */}
-                <div className="flex-1 overflow-hidden flex flex-col justify-end">
-                    {asks.slice(-10).map((ask, i) => {
+                {/* Asks (Sell Orders) - Red */}
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col-reverse">
+                    {asks.slice(-15).map((ask, i) => {
                         const depthRatio = maxTotal > 0 ? (ask.total / maxTotal) * 100 : 0;
                         return (
-                            <div key={`ask-${i}`} className="flex justify-between px-4 py-1 relative hover:bg-slate-800/50 cursor-pointer">
+                            <div key={`ask-${i}`} className="flex justify-between px-4 py-0.5 relative hover:bg-rose-500/10 cursor-crosshair group transition-colors">
                                 <div
-                                    className="absolute right-0 top-0 bottom-0 bg-red-500/10 z-0 transition-all duration-300"
+                                    className="absolute right-0 top-0 bottom-0 bg-rose-500/5 z-0 transition-all duration-300 group-hover:bg-rose-500/15"
                                     style={{ width: `${depthRatio}%` }}
                                 />
-                                <div className="w-1/3 text-red-500 z-10">{ask.price.toFixed(2)}</div>
+                                <div className="w-1/3 text-rose-500 font-bold z-10">{ask.price.toFixed(2)}</div>
                                 <div className="w-1/3 text-right text-slate-300 z-10">{ask.size}</div>
-                                <div className="w-1/3 text-right text-slate-500 z-10">{ask.total}</div>
+                                <div className="w-1/3 text-right text-slate-600 z-10 group-hover:text-slate-400">{ask.total}</div>
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Spread / Last Price */}
-                <div className="py-2 px-4 flex items-center justify-center border-y border-slate-800 bg-slate-900 shadow-[0_0_15px_rgba(0,0,0,0.5)] z-20">
-                    <span className="text-lg font-bold text-white">${lastPrice.toFixed(2)}</span>
+                {/* Mid Price / Spread Indicator */}
+                <div className="py-4 px-4 flex flex-col items-center justify-center border-y border-slate-800 bg-[#121212] shadow-inner relative z-20">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-1">Last Executed Price</div>
+                    <div className="text-3xl font-black text-white tracking-tighter flex items-end gap-2">
+                        ₹{lastPrice.toFixed(2)}
+                        <span className="text-xs text-emerald-500 mb-1">▲</span>
+                    </div>
                 </div>
 
-                {/* Bids (Buy Orders) */}
-                <div className="flex-1 overflow-hidden flex flex-col justify-start">
-                    {bids.slice(0, 10).map((bid, i) => {
+                {/* Bids (Buy Orders) - Green */}
+                <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col">
+                    {bids.slice(0, 15).map((bid, i) => {
                         const depthRatio = maxTotal > 0 ? (bid.total / maxTotal) * 100 : 0;
                         return (
-                            <div key={`bid-${i}`} className="flex justify-between px-4 py-1 relative hover:bg-slate-800/50 cursor-pointer">
+                            <div key={`bid-${i}`} className="flex justify-between px-4 py-0.5 relative hover:bg-emerald-500/10 cursor-crosshair group transition-colors">
                                 <div
-                                    className="absolute right-0 top-0 bottom-0 bg-green-500/10 z-0 transition-all duration-300"
+                                    className="absolute right-0 top-0 bottom-0 bg-emerald-500/5 z-0 transition-all duration-300 group-hover:bg-emerald-500/15"
                                     style={{ width: `${depthRatio}%` }}
                                 />
-                                <div className="w-1/3 text-green-500 z-10">{bid.price.toFixed(2)}</div>
+                                <div className="w-1/3 text-emerald-500 font-bold z-10">{bid.price.toFixed(2)}</div>
                                 <div className="w-1/3 text-right text-slate-300 z-10">{bid.size}</div>
-                                <div className="w-1/3 text-right text-slate-500 z-10">{bid.total}</div>
+                                <div className="w-1/3 text-right text-slate-600 z-10 group-hover:text-slate-400">{bid.total}</div>
                             </div>
                         );
                     })}
