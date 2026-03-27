@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType, IChartApi, ISeriesApi } from "lightweight-charts";
 import * as LightweightCharts from "lightweight-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,79 +20,163 @@ interface ChartProps {
         image: string;
     } | null;
     onClosePattern?: () => void;
+    interval?: string;
+    extraIndicators?: Array<{
+        name: string;
+        data: Array<{ time: any; value: number }>;
+        color: string;
+        lineWidth?: number;
+    }>;
 }
 
-export function TradingChart({ 
-    data, 
-    rsiData, 
-    volumeData, 
-    ticker = "RELIANCE.NS", 
+export function TradingChart({
+    data,
+    rsiData,
+    volumeData,
+    ticker = "RELIANCE.NS",
     highlightRange,
     selectedPattern,
-    onClosePattern
+    onClosePattern,
+    interval = "1d",
+    extraIndicators = []
 }: ChartProps) {
+    // Transform data: intraday -> timestamps, daily -> date strings
+    const transformData = (rawData: any[] | undefined): any[] => {
+        if (!rawData || rawData.length === 0) return [];
+        const isIntraday = rawData[0]?.time && String(rawData[0].time).includes(' ');
+        if (!isIntraday) return rawData;
+        return rawData.map(item => ({
+            ...item,
+            time: new Date(String(item.time).replace(' ', 'T')).getTime(),
+        }));
+    };
+
+    const transformedData = transformData(data);
+    const transformedRsiData = transformData(rsiData);
+    const transformedVolumeData = transformData(volumeData);
+    const transformedExtraIndicators = extraIndicators?.map(ind => {
+        const transformed = transformData(ind.data);
+        // Filter out any points with null/undefined values
+        const filteredData = transformed.filter(item => item.value !== null && item.value !== undefined && !isNaN(item.value));
+        return {
+            ...ind,
+            data: filteredData
+        };
+    }).filter(ind => ind.data.length > 0) || [];
+
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const rsiContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const rsiChartRef = useRef<IChartApi | null>(null);
-
     const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
     const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
     const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
 
-    useEffect(() => {
-        if (!chartContainerRef.current) return;
+    const [chartWidth, setChartWidth] = useState(0);
 
-        // 1. Create Main Chart
+    // Track container width
+    useEffect(() => {
+        const updateWidth = () => {
+            if (chartContainerRef.current) {
+                setChartWidth(chartContainerRef.current.clientWidth);
+            }
+        };
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, []);
+
+    // Main chart + RSI chart creation
+    useEffect(() => {
+        if (!chartContainerRef.current || chartWidth === 0) return;
+
+        const isIntraday = data.length > 0 && data[0]?.time && String(data[0].time).includes(' ');
+        const secondsVisible = isIntraday && ['1s','5s','10s','15s','30s','1m','3m','5m','10m','15m','30m','1h','2h','3h','4h'].includes(interval);
+
+        // Cleanup existing charts
+        const cleanup = () => {
+            if (chartRef.current) {
+                chartRef.current.remove();
+                chartRef.current = null;
+            }
+            if (rsiChartRef.current) {
+                rsiChartRef.current.remove();
+                rsiChartRef.current = null;
+            }
+        };
+
+        // Create main chart
         const chart = createChart(chartContainerRef.current, {
             layout: {
                 background: { type: ColorType.Solid, color: "transparent" },
-                textColor: "#94a3b8", // slate-400
-                attributionLogo: false, // Attempt to hide logo via options
-            } as any,
+                textColor: "#94a3b8",
+                attributionLogo: false,
+            },
             grid: {
-                vertLines: { color: "#1e293b" }, // slate-800
+                vertLines: { color: "#1e293b" },
                 horzLines: { color: "#1e293b" },
             },
-            width: chartContainerRef.current.clientWidth,
+            width: chartWidth,
             height: 400,
             timeScale: {
                 timeVisible: true,
-                secondsVisible: false,
+                secondsVisible,
+                borderColor: "#334155",
             },
             rightPriceScale: {
-                borderColor: "#334155", // slate-700
+                borderColor: "#334155",
             },
         });
         chartRef.current = chart;
 
-        // Add Candlestick Series
+        // Candlestick series
         const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-            upColor: "#10B981", // emerald-500
-            downColor: "#EF4444", // red-500
+            upColor: "#10B981",
+            downColor: "#EF4444",
             borderVisible: false,
             wickUpColor: "#10B981",
             wickDownColor: "#EF4444",
-        } as any);
+        });
         candlestickSeriesRef.current = candleSeries;
-        candleSeries.setData(data);
+        if (transformedData.length > 0) {
+            candleSeries.setData(transformedData);
+        }
 
-        // Add Volume Series (Overlay)
-        if (volumeData && volumeData.length > 0) {
+        // Volume series (overlay)
+        if (transformedVolumeData.length > 0) {
             const volSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
                 color: "#3b82f6",
                 priceFormat: { type: "volume" },
-                priceScaleId: "", // Set as overlay
-            } as any);
+                priceScaleId: "",
+            });
             volSeries.priceScale().applyOptions({
-                scaleMargins: { top: 0.8, bottom: 0 },
+                scaleMargins: { top: 0.8, bottom: 0.1 }, // Sum = 0.9 < 1 ✓
             });
             volumeSeriesRef.current = volSeries;
-            volSeries.setData(volumeData);
+            volSeries.setData(transformedVolumeData);
         }
 
-        // 2. Create RSI Chart
-        if (rsiData && rsiData.length > 0 && rsiContainerRef.current) {
+        // Extra indicator line series (SMA, EMA, Bollinger Bands, MACD)
+        if (transformedExtraIndicators && transformedExtraIndicators.length > 0) {
+            transformedExtraIndicators.forEach(indicator => {
+                if (!indicator.data || indicator.data.length === 0) return;
+                const lineSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                    color: indicator.color,
+                    lineWidth: (indicator.lineWidth !== undefined ? indicator.lineWidth : 2) as any,
+                });
+                lineSeries.setData(indicator.data);
+            });
+        }
+
+        // Apply highlight or fit
+        if (highlightRange) {
+            chart.timeScale().setVisibleRange(highlightRange as any);
+        } else {
+            chart.timeScale().fitContent();
+        }
+
+        // Create RSI chart if needed
+        if (rsiContainerRef.current && transformedRsiData.length > 0) {
             const rsiChart = createChart(rsiContainerRef.current, {
                 layout: {
                     background: { type: ColorType.Solid, color: "transparent" },
@@ -105,8 +189,9 @@ export function TradingChart({
                 width: rsiContainerRef.current.clientWidth,
                 height: 150,
                 timeScale: {
-                    timeVisible: true,
-                    visible: false, // Sync with main chart so don't show twice
+                    timeVisible: false,
+                    visible: false,
+                    secondsVisible: false,
                 },
                 rightPriceScale: {
                     borderColor: "#334155",
@@ -115,57 +200,50 @@ export function TradingChart({
             rsiChartRef.current = rsiChart;
 
             const rLineSeries = rsiChart.addSeries(LightweightCharts.LineSeries, {
-                color: "#A855F7", // purple-500
+                color: "#A855F7",
                 lineWidth: 2,
-            } as any);
+            });
             rsiSeriesRef.current = rLineSeries;
-            rLineSeries.setData(rsiData);
+            rLineSeries.setData(transformedRsiData);
 
-            // Add RSI Overbought/Oversold lines
-            const rsiBaseOptions = {
-                color: "#64748b",
-                lineWidth: 1 as const,
-                lineStyle: 2, // Dashed
-                axisLabelVisible: false,
-            };
+            // Sync: main -> RSI (time scale)
+            chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+                if (range) rsiChart.timeScale().setVisibleRange(range);
+            });
 
-            // Unfortunately, lightweight-charts doesn't natively support static horizontal bands easily
-            // without extra series. We'll skip bands for simplicity in this port.
-
-            // Sync crosshairs
+            // Sync: main -> RSI (crosshair)
             chart.subscribeCrosshairMove((param) => {
                 if (!param.time || param.point === undefined || !param.seriesData) {
                     rsiChart.clearCrosshairPosition();
                     return;
                 }
                 const data = param.seriesData.get(candleSeries as any) as any;
-                const price = data !== undefined && 'value' in data ? data.value : (data !== undefined && 'close' in data ? data.close : undefined);
+                const price = data?.close;
                 if (price !== undefined) {
                     rsiChart.setCrosshairPosition(price, param.time, rLineSeries as any);
                 }
             });
 
+            // Sync: RSI -> main (crosshair)
             rsiChart.subscribeCrosshairMove((param) => {
                 if (!param.time || param.point === undefined || !param.seriesData) {
                     chart.clearCrosshairPosition();
                     return;
                 }
                 const data = param.seriesData.get(rLineSeries as any) as any;
-                const price = data !== undefined && 'value' in data ? data.value : undefined;
+                const price = data?.value;
                 if (price !== undefined) {
-                    chart.setCrosshairPosition(price, param.time, candleSeries as any);
+                    chart.setCrosshairPosition(price, param.time, candleSeries);
                 }
             });
 
-            // Sync time scales
-            chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
-                if (range) rsiChart.timeScale().setVisibleRange(range);
-            });
+            // Sync: RSI -> main (time scale)
             rsiChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
                 if (range) chart.timeScale().setVisibleRange(range);
             });
         }
 
+        // Resize handler for both charts
         const handleResize = () => {
             if (chartContainerRef.current && chartRef.current) {
                 chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -174,35 +252,40 @@ export function TradingChart({
                 rsiChartRef.current.applyOptions({ width: rsiContainerRef.current.clientWidth });
             }
         };
-
-        window.addEventListener("resize", handleResize);
-        chart.timeScale().fitContent();
+        window.addEventListener('resize', handleResize);
 
         return () => {
-            window.removeEventListener("resize", handleResize);
-            if (chartRef.current) chartRef.current.remove();
-            if (rsiChartRef.current) rsiChartRef.current.remove();
+            window.removeEventListener('resize', handleResize);
+            cleanup();
         };
-    }, [data, rsiData, volumeData]);
+    }, [chartWidth, transformedData, transformedVolumeData, transformedRsiData, interval, highlightRange]);
 
-    // Update data dynamically
+    // Dynamic data updates (setData without recreating chart)
     useEffect(() => {
-        if (candlestickSeriesRef.current && data) {
-            candlestickSeriesRef.current.setData(data);
+        if (candlestickSeriesRef.current) {
+            candlestickSeriesRef.current.setData(transformedData);
         }
-    }, [data]);
-    
-    useEffect(() => {
-        if (chartRef.current && highlightRange) {
-            chartRef.current.timeScale().setVisibleRange(highlightRange as any);
-        }
-    }, [highlightRange]);
+    }, [transformedData]);
 
-    // Derived style for the pattern overlay (from AIPatternDetection logic)
+    useEffect(() => {
+        if (volumeSeriesRef.current) {
+            if (transformedVolumeData.length > 0) {
+                volumeSeriesRef.current.setData(transformedVolumeData);
+            }
+        }
+    }, [transformedVolumeData]);
+
+    useEffect(() => {
+        if (rsiSeriesRef.current) {
+            if (transformedRsiData.length > 0) {
+                rsiSeriesRef.current.setData(transformedRsiData);
+            }
+        }
+    }, [transformedRsiData]);
+
     const renderPatternKernel = () => {
         if (!selectedPattern || !selectedPattern.image) return null;
-        
-        const { name, confidence, sentiment, bbox, image } = selectedPattern;
+        const { name, confidence, bbox, image } = selectedPattern;
         const [x1, y1, x2, y2] = bbox || [0.1, 0.1, 0.9, 0.9];
         const centerX = (x1 + x2) / 2;
         const centerY = (y1 + y2) / 2;
@@ -211,19 +294,18 @@ export function TradingChart({
         const zoom = Math.min(2.5, 1 / Math.max(width, height, 0.1));
 
         return (
-            <div className="absolute top-4 right-4 z-[100] w-64 h-40 overflow-hidden rounded-2xl border border-violet-500/50 bg-slate-950/80 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="absolute top-3 right-3 z-[100] w-64 h-40 overflow-hidden rounded-xl border border-violet-500/50 bg-slate-950/90 backdrop-blur-xl shadow-2xl">
                 <div className="absolute top-2 left-2 z-10 bg-violet-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-lg uppercase tracking-tighter">
                     AI Kernel: {name} ({confidence.toFixed(0)}%)
                 </div>
-                <button 
+                <button
                     onClick={onClosePattern}
                     className="absolute top-2 right-2 z-10 bg-slate-900/80 hover:bg-slate-800 text-white p-1 rounded backdrop-blur-md transition-colors"
                 >
                     <ChevronUp className="w-3 h-3 rotate-45" />
                 </button>
-                
                 <div className="w-full h-full overflow-hidden relative">
-                    <img 
+                    <img
                         src={`data:image/png;base64,${image}`}
                         alt="Pattern Kernel"
                         className="absolute top-0 left-0 w-full h-full object-contain transition-all duration-500"
@@ -242,20 +324,25 @@ export function TradingChart({
 
     return (
         <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl col-span-4 h-full flex flex-col">
-            <CardHeader className="py-4">
-                <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+            <CardHeader className="py-3 px-4">
+                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
                     {ticker}
                     <span className="text-sm font-normal text-slate-400">Technical Analysis</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-1 pb-4 relative">
-                <div ref={chartContainerRef} className="w-full relative min-h-[400px]">
+            <CardContent className="flex-1 flex flex-col gap-0 p-0 relative">
+                {/* Main Chart */}
+                <div ref={chartContainerRef} className="w-full relative" style={{ height: 400 }}>
                     {renderPatternKernel()}
                 </div>
+
+                {/* RSI Chart */}
                 {rsiData && rsiData.length > 0 && (
-                    <div className="relative mt-2 border-t border-slate-800 pt-2">
-                        <span className="absolute top-4 left-4 z-10 text-xs font-medium text-purple-400">RSI (14)</span>
-                        <div ref={rsiContainerRef} className="w-full min-h-[150px]" />
+                    <div className="relative w-full border-t border-slate-800">
+                        <div className="absolute top-2 left-3 z-10 bg-slate-900/80 backdrop-blur-sm text-xs font-medium text-purple-400 px-2 py-1 rounded border border-slate-700">
+                            RSI (14)
+                        </div>
+                        <div ref={rsiContainerRef} className="w-full" style={{ height: 150 }} />
                     </div>
                 )}
             </CardContent>

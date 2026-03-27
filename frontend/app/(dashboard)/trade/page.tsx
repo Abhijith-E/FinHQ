@@ -33,14 +33,12 @@ export default function TradePage() {
     const { data: session, status } = useSession()
     const router = useRouter()
     
-    // Redirect if not logged in
+    // Auth check on mount - verify token exists
     useEffect(() => {
-        if (status === "unauthenticated") {
-            const token = typeof window !== 'undefined' ? localStorage.getItem("access_token") : null;
-            if (!token) {
-                toast.error("Authentication required. Please log in.");
-                router.push("/login");
-            }
+        const token = typeof window !== 'undefined' ? localStorage.getItem("access_token") : null;
+        if (status === "unauthenticated" && !token) {
+            toast.error("Authentication required. Please log in.");
+            router.push("/login");
         }
     }, [status, router]);
     
@@ -48,6 +46,7 @@ export default function TradePage() {
     const [ticker, setTicker] = useState("RELIANCE.NS")
     const [quantity, setQuantity] = useState("10")
     const [side, setSide] = useState("BUY")
+    const [isAuthChecking, setIsAuthChecking] = useState(true)
     
     // Data State
     const [livePrice, setLivePrice] = useState<number>(150.25)
@@ -57,6 +56,7 @@ export default function TradePage() {
     const [isMarketCurrentlyOpen, setIsMarketCurrentlyOpen] = useState(isMarketOpen())
     const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null)
     const [dataError, setDataError] = useState<string | null>(null)
+    const [loading, setLoading] = useState(true) // For initial data load
 
     // Helper to fetch with auth
     const fetchAuth = useCallback(async (path: string, options: RequestInit = {}) => {
@@ -84,19 +84,40 @@ export default function TradePage() {
         return res.json();
     }, [session]);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (showLoading = true) => {
         const token = (session as any)?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem("access_token") : null);
-        if (status === "loading" || (!session && !token)) return;
+        if (!token) {
+            setDataError("Not authenticated. Please log in.");
+            if (showLoading) setLoading(false);
+            return;
+        }
 
+        if (showLoading) setLoading(true);
         setDataError(null);
         try {
-            const [ordersData, portfolioData] = await Promise.all([
-                fetchAuth("/trading/orders"),
-                fetchAuth("/trading/portfolio/summary")
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+            const [ordersRes, portfolioRes] = await Promise.all([
+                fetch(`${API_BASE}/trading/orders`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE}/trading/portfolio/summary`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
             ]);
+
+            if (!ordersRes.ok || !portfolioRes.ok) {
+                const ordersErr = ordersRes.status !== 200 ? `Orders API (${ordersRes.status})` : '';
+                const portfolioErr = portfolioRes.status !== 200 ? `Portfolio API (${portfolioRes.status})` : '';
+                throw new Error(`API error: ${[ordersErr, portfolioErr].filter(Boolean).join(', ')}`);
+            }
+
+            const [ordersData, portfolioData] = await Promise.all([
+                ordersRes.json(),
+                portfolioRes.json()
+            ]);
+
             if (ordersData) setOrders(Array.isArray(ordersData) ? ordersData : []);
             if (portfolioData) {
-                // Ensure portfolio data structure
                 setPortfolio({
                     cash_balance: typeof portfolioData.cash_balance === 'number' ? portfolioData.cash_balance : 0,
                     total_value: typeof portfolioData.total_value === 'number' ? portfolioData.total_value : 0,
@@ -106,8 +127,10 @@ export default function TradePage() {
         } catch (error: any) {
             console.error("Failed to fetch user data:", error);
             setDataError(error.message || "Failed to load data");
+        } finally {
+            if (showLoading) setLoading(false);
         }
-    }, [status, session, fetchAuth]);
+    }, [session]);
 
     // Market status monitoring - update every minute
     useEffect(() => {
@@ -120,35 +143,75 @@ export default function TradePage() {
         return () => clearInterval(interval);
     }, []);
 
-    // Initial data fetch
+    // Initial data fetch (orders, portfolio)
     useEffect(() => {
-        fetchData();
+        // Only fetch if we have a token (from localStorage or session)
+        const token = typeof window !== 'undefined' ? localStorage.getItem("access_token") : null;
+        if (token) {
+            fetchData();
+        } else {
+            setLoading(false);
+        }
     }, [status, session]);
 
-    // Live price polling - only during market hours
+    // Live price polling - fetches once on mount/ticker change, then polls only during market hours
     useEffect(() => {
+        // Resolve token from session or localStorage
         const token = (session as any)?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem("access_token") : null);
-        if (status === "loading" || (!session && !token) || !isMarketCurrentlyOpen) return;
+
+        if (!token) {
+            console.warn("No auth token - user not logged in");
+            setDataError("Please log in to view market data");
+            return;
+        }
 
         let isMounted = true;
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
         const fetchPrice = async () => {
             try {
-                const data = await fetchAuth(`/stocks/${ticker}/quote`);
+                console.log(`Fetching quote for ${ticker} (Market ${isMarketCurrentlyOpen ? 'OPEN' : 'CLOSED'})`);
+                const res = await fetch(`${API_BASE}/stocks/${ticker}/quote`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    const errBody = await res.text();
+                    throw new Error(`HTTP ${res.status}: ${errBody}`);
+                }
+
+                const data = await res.json();
+                console.log("Quote API response:", data);
+
                 if (data && isMounted) {
-                    const price = data.last_price || data.price || data.currentPrice || 150.25;
+                    const price = data.last_price || data.price || data.currentPrice || data.bid || data.ask || 150.25;
+                    console.log("Setting livePrice to:", price);
                     setLivePrice(price);
                     setLastPriceUpdate(new Date());
+                    setDataError(null);
                 }
-            } catch (err) {
-                console.error("Failed to fetch quote", err);
+            } catch (err: any) {
+                console.error("Quote fetch error:", err);
+                if (isMounted) {
+                    setDataError(err.message || "Failed to fetch price");
+                }
             }
         };
 
+        // Always fetch initial quote (works even when market closed)
         fetchPrice();
-        const intv = setInterval(fetchPrice, 3000);
-        return () => { isMounted = false; clearInterval(intv); }
-    }, [ticker, status, session, isMarketCurrentlyOpen]);
+
+        // Poll every 3 seconds only during market open hours
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+        if (isMarketCurrentlyOpen) {
+            intervalId = setInterval(fetchPrice, 3000);
+        }
+
+        return () => {
+            isMounted = false;
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [ticker, isMarketCurrentlyOpen, session]); // Re-run when ticker, market status, or session changes
 
     const handleOrder = async () => {
         const token = (session as any)?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem("access_token") : null);
@@ -269,7 +332,7 @@ export default function TradePage() {
                                 <div className="flex justify-between mb-2 text-xs font-mono">
                                     <span className="text-slate-500 uppercase">Current Price</span>
                                     <span className="text-slate-300 font-bold">
-                                        ₹{livePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        {lastPriceUpdate ? `₹${livePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '--'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between mb-6 text-xs font-mono">
@@ -315,6 +378,39 @@ export default function TradePage() {
                         </div>
                     </Card>
 
+                    {/* Live Price Display with status */}
+                    <Card className="flex-1 border-slate-800 bg-[#1a1a1a] flex flex-col justify-center items-center text-center p-6 group hover:border-emerald-500/50 transition-colors relative overflow-hidden">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 tracking-[0.2em] mb-2">Live Price</div>
+                        <div className={`text-4xl xl:text-5xl font-black font-mono tracking-tighter ${dataError ? 'text-rose-400' : 'text-emerald-400'} transition-colors`}>
+                            ₹{livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                            <span className={`text-[10px] font-bold uppercase ${isMarketCurrentlyOpen ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                ● {isMarketCurrentlyOpen ? 'LIVE' : 'STATIC (CLOSED)'}
+                            </span>
+                            {lastPriceUpdate && (
+                                <span className="text-[9px] text-slate-600 font-mono">
+                                    Updated: {lastPriceUpdate.toLocaleTimeString()}
+                                </span>
+                            )}
+                        </div>
+                        {dataError && (
+                            <div className="absolute bottom-2 left-2 right-2">
+                                <p className="text-[9px] text-rose-500 font-mono bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                                    ⚠ {dataError}
+                                </p>
+                            </div>
+                        )}
+                        <div className="absolute top-2 right-2">
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="text-[9px] text-slate-500 hover:text-white transition-colors"
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                    </Card>
+
                     <Card className="flex-1 border-slate-800 bg-[#1a1a1a] flex flex-col justify-center items-center text-center p-6 group hover:border-emerald-500/50 transition-colors">
                         <div className="text-[10px] uppercase font-bold text-slate-500 tracking-[0.2em] mb-4">Unrealized P&L</div>
                         <div className={`text-4xl xl:text-5xl font-black font-mono tracking-tighter ${isPnlPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -336,8 +432,16 @@ export default function TradePage() {
                     <Card className="h-full border-slate-800 bg-[#1a1a1a] flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800/50 bg-[#1a1a1a]">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Execution History</h3>
-                            <div className="flex gap-4">
-                                <span className="text-[10px] font-mono text-emerald-500/80">Systems API Connected</span>
+                            <div className="flex gap-4 items-center">
+                                <span className={`text-[10px] font-mono ${dataError ? 'text-rose-500' : 'text-emerald-500'} ${dataError ? 'blink' : ''}`}>
+                                    ● {dataError ? 'API ERROR' : 'Systems API Connected'}
+                                </span>
+                                <button
+                                    onClick={fetchData}
+                                    className="text-[10px] text-slate-500 hover:text-white px-2 py-1 bg-slate-800 rounded"
+                                >
+                                    Reload Data
+                                </button>
                             </div>
                         </div>
                         <div className="flex-1 overflow-auto custom-scrollbar">

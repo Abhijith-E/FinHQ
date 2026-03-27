@@ -20,13 +20,64 @@ _BASE_PRICES: Dict[str, float] = {
     stock["ticker"]: get_base_price(stock["ticker"]) for stock in ALL_INDIAN_STOCKS
 }
 
+# Mapping of intervals to timedeltas for simulation purposes
+INTERVAL_DELTAS = {
+    "1s":  timedelta(seconds=1),
+    "5s":  timedelta(seconds=5),
+    "10s": timedelta(seconds=10),
+    "15s": timedelta(seconds=15),
+    "30s": timedelta(seconds=30),
+    "1m":  timedelta(minutes=1),
+    "3m":  timedelta(minutes=3),
+    "5m":  timedelta(minutes=5),
+    "10m": timedelta(minutes=10),
+    "15m": timedelta(minutes=15),
+    "30m": timedelta(minutes=30),
+    "1h":  timedelta(hours=1),
+    "2h":  timedelta(hours=2),
+    "3h":  timedelta(hours=3),
+    "4h":  timedelta(hours=4),
+    "1d":  timedelta(days=1),
+    "5d":  timedelta(days=5),
+    "1wk": timedelta(weeks=1),
+    "1mo": timedelta(days=30),   # approximate month
+    "3mo": timedelta(days=90),
+    "5mo": timedelta(days=150),
+    "1y":  timedelta(days=365),
+    "5y":  timedelta(days=365*5),
+}
+
 # Map our timeframe identifiers to yfinance parameters
 INTERVAL_MAP = {
-    "1d":  {"period": "1y",   "interval": "1d"},
-    "1h":  {"period": "60d",  "interval": "1h"},
+    # Seconds (not directly supported by yfinance, will fallback to simulation)
+    "1s":  {"period": "1d",   "interval": "1s"},
+    "5s":  {"period": "1d",   "interval": "5s"},
+    "10s": {"period": "1d",   "interval": "10s"},
+    "15s": {"period": "1d",   "interval": "15s"},
+    "30s": {"period": "1d",   "interval": "30s"},
+    # Minutes
+    "1m":  {"period": "7d",   "interval": "1m"},
+    "3m":  {"period": "7d",   "interval": "3m"},  # not directly supported, fallback/resample
+    "5m":  {"period": "30d",  "interval": "5m"},
+    "10m": {"period": "30d",  "interval": "10m"}, # not directly supported
     "15m": {"period": "5d",   "interval": "15m"},
     "30m": {"period": "30d",  "interval": "30m"},
+    # Hours
+    "1h":  {"period": "60d",  "interval": "1h"},
+    "2h":  {"period": "60d",  "interval": "2h"}, # not directly supported
+    "3h":  {"period": "60d",  "interval": "3h"}, # not directly supported
+    "4h":  {"period": "60d",  "interval": "4h"}, # not directly supported
+    # Days
+    "1d":  {"period": "1y",   "interval": "1d"},
+    "5d":  {"period": "1y",   "interval": "5d"},
     "1wk": {"period": "5y",   "interval": "1wk"},
+    # Months
+    "1mo": {"period": "5y",   "interval": "1mo"},
+    "3mo": {"period": "5y",   "interval": "3mo"},
+    "5mo": {"period": "5y",   "interval": "5mo"}, # not directly supported
+    # Years (use monthly data and aggregate or simulate)
+    "1y":  {"period": "10y",  "interval": "1mo"}, # will aggregate monthly to yearly
+    "5y":  {"period": "max",  "interval": "1mo"}, # will aggregate monthly to yearly
 }
 
 # Representative Nifty 50 tickers used for fast market-movers sampling
@@ -118,7 +169,13 @@ class StockDataService:
                     results = []
                     for ts, row in df.iterrows():
                         if hasattr(ts, "strftime"):
-                            time_str = ts.strftime("%Y-%m-%d") if params["interval"] in ["1d", "1wk"] else ts.strftime("%Y-%m-%dT%H:%M:%S")
+                            # Use date format for intervals >= 1 day, datetime with SPACE for intraday
+                            daily_or_longer = ["1d", "5d", "1wk", "1mo", "3mo", "5mo", "1y", "5y"]
+                            if interval in daily_or_longer:
+                                time_str = ts.strftime("%Y-%m-%d")
+                            else:
+                                # Intraday: use space separator for lightweight-charts compatibility
+                                time_str = ts.strftime("%Y-%m-%d %H:%M:%S")
                         else:
                             time_str = str(ts)
 
@@ -143,22 +200,25 @@ class StockDataService:
             except Exception as e:
                 print(f"[yfinance error] {ticker}: {e}")
 
-        # GBM Fallback
+        # GBM Fallback - Simulated data for any interval
         results = []
         base_price = self._get_base_price(ticker)
-        current_date = datetime.utcnow()
+        end_date = datetime.utcnow()
+        delta = INTERVAL_DELTAS.get(interval, timedelta(days=1))
+        timestamps = []
+        current = end_date
+        for _ in range(limit):
+            # Skip weekends for intervals >= 1 day
+            if interval in ["1d", "5d", "1wk", "1mo", "3mo", "5mo", "1y", "5y"]:
+                while current.weekday() >= 5:  # Saturday=5, Sunday=6
+                    current -= timedelta(days=1)
+            timestamps.append(current)
+            current -= delta
+        timestamps.reverse()
+        price = base_price
         mu = 0.0002
         sigma = 0.015
-        dates = []
-        dt = current_date
-        for _ in range(limit):
-            while dt.weekday() >= 5:
-                dt -= timedelta(days=1)
-            dates.append(dt)
-            dt -= timedelta(days=1)
-        dates.reverse()
-        price = base_price
-        for date in dates:
+        for ts in timestamps:
             shock = random.gauss(0, 1)
             pct = mu + sigma * shock
             o = price
@@ -166,7 +226,20 @@ class StockDataService:
             h = round(max(o, c) * (1 + random.uniform(0, 0.005)), 2)
             l = round(min(o, c) * (1 - random.uniform(0, 0.005)), 2)
             v = int(random.uniform(500_000, 10_000_000))
-            results.append({"time": date.strftime("%Y-%m-%d"), "open": o, "high": h, "low": l, "close": c, "volume": v})
+            # Format time string
+            if interval in ["1d", "5d", "1wk", "1mo", "3mo", "5mo", "1y", "5y"]:
+                time_str = ts.strftime("%Y-%m-%d")
+            else:
+                # Intraday: use space separator for lightweight-charts compatibility
+                time_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+            results.append({
+                "time": time_str,
+                "open": o,
+                "high": h,
+                "low": l,
+                "close": c,
+                "volume": v
+            })
             price = c
         return results
 

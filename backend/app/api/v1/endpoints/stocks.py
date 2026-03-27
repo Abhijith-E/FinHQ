@@ -144,7 +144,7 @@ async def get_stock_details(
 @router.get("/{ticker}/ohlcv")
 async def get_stock_ohlcv(
     ticker: str,
-    interval: str = Query("1d", description="Timeframe: 1d, 1wk, 1h, 15m, 30m"),
+    interval: str = Query("1d", description="Timeframe intervals: 1s,5s,10s,15s,30s,1m,3m,5m,10m,15m,30m,1h,2h,3h,4h,1d,5d,1wk,1mo,3mo,5mo,1y,5y"),
     limit: int = Query(200, le=1000),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(deps.get_current_active_user)

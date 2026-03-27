@@ -1,10 +1,10 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, TrendingUp, TrendingDown, RefreshCw, BarChart2, Zap, Target } from "lucide-react"
+import { Activity, TrendingUp, TrendingDown, RefreshCw, BarChart2, Zap, Target, ChevronDown } from "lucide-react"
 import ErrorBoundary from "@/components/error-boundary"
 import { TickerSearch } from "@/components/ticker-search"
 import AIPatternDetection from "@/components/ai-pattern-detection"
@@ -41,12 +41,65 @@ interface IndicatorResult {
     indicators: Record<string, (number | null)[]>
 }
 
-const TIMEFRAMES = [
-    { label: "15m", interval: "15m", limit: 96 },
-    { label: "1H", interval: "1h", limit: 72 },
-    { label: "1D", interval: "1d", limit: 200 },
-    { label: "1W", interval: "1wk", limit: 52 },
+// Comprehensive timeframe options organized by category
+const TIMEFRAME_SECTIONS = [
+  {
+    category: "Seconds",
+    options: [
+      { label: "1 Second", interval: "1s", limit: 60 },
+      { label: "5 Seconds", interval: "5s", limit: 120 },
+      { label: "10 Seconds", interval: "10s", limit: 180 },
+      { label: "15 Seconds", interval: "15s", limit: 240 },
+      { label: "30 Seconds", interval: "30s", limit: 300 },
+    ]
+  },
+  {
+    category: "Minutes",
+    options: [
+      { label: "1 Minute", interval: "1m", limit: 60 },
+      { label: "3 Minutes", interval: "3m", limit: 120 },
+      { label: "5 Minutes", interval: "5m", limit: 96 },
+      { label: "10 Minutes", interval: "10m", limit: 72 },
+      { label: "15 Minutes", interval: "15m", limit: 96 },
+      { label: "30 Minutes", interval: "30m", limit: 48 },
+    ]
+  },
+  {
+    category: "Hours",
+    options: [
+      { label: "1 Hour", interval: "1h", limit: 72 },
+      { label: "2 Hours", interval: "2h", limit: 60 },
+      { label: "3 Hours", interval: "3h", limit: 48 },
+      { label: "4 Hours", interval: "4h", limit: 36 },
+    ]
+  },
+  {
+    category: "Days",
+    options: [
+      { label: "1 Day", interval: "1d", limit: 200 },
+      { label: "5 Days", interval: "5d", limit: 52 },
+      { label: "1 Week", interval: "1wk", limit: 52 },
+    ]
+  },
+  {
+    category: "Months",
+    options: [
+      { label: "1 Month", interval: "1mo", limit: 60 },
+      { label: "3 Months", interval: "3mo", limit: 24 },
+      { label: "5 Months", interval: "5mo", limit: 12 },
+    ]
+  },
+  {
+    category: "Years",
+    options: [
+      { label: "1 Year", interval: "1y", limit: 120 },
+      { label: "5 Years", interval: "5y", limit: 60 },
+    ]
+  },
 ]
+
+// Default timeframe: 1 Day
+const DEFAULT_TIMEFRAME = { label: "1 Day", interval: "1d", limit: 200 }
 
 const INDICATOR_OPTIONS = ["sma20", "sma50", "ema20", "rsi", "macd", "bb"]
 
@@ -163,9 +216,10 @@ function SupportResistanceStyles() {
 export default function TechnicalPage() {
     const [mounted, setMounted] = useState(false)
     const [ticker, setTicker] = useState("RELIANCE.NS")
-    const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]) // 1D default
-    const [selectedIndicators, setSelectedIndicators] = useState<string[]>(["sma20", "sma50", "rsi"])
+    const [timeframe, setTimeframe] = useState(DEFAULT_TIMEFRAME)
+    const [selectedIndicators, setSelectedIndicators] = useState<string[]>(["sma20", "sma50", "ema20", "rsi", "macd", "bb"])
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false)
+    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false)
 
     const [candles, setCandles] = useState<Candle[]>([])
     const [quote, setQuote] = useState<Quote | null>(null)
@@ -238,6 +292,118 @@ export default function TechnicalPage() {
         )
     }
 
+    // Build extra indicator series for chart overlay (SMA, EMA, MACD, BB)
+    const extraIndicatorSeries = useMemo(() => {
+        if (!indicatorData) return [];
+
+        // Don't plot indicators on intraday timeframes - they're based on daily data and would be misaligned
+        const intradayIntervals = ['1s','5s','10s','15s','30s','1m','3m','5m','10m','15m','30m','1h','2h','3h','4h'];
+        if (timeframe && intradayIntervals.includes(timeframe.interval)) {
+            return [];
+        }
+
+        const colorMap: Record<string, string> = {
+            sma20: "#f59e0b", // amber-400
+            sma50: "#6366f1", // indigo-500
+            ema20: "#06b6d4", // cyan-400
+            macd: "#a855f7", // purple-500
+            macd_signal: "#ec4899", // pink-500
+            macd_hist: "#14b8a6", // teal-500
+            bb_upper: "#f43f5e", // rose-500
+            bb_middle: "#94a3b8", // slate-400
+            bb_lower: "#10b981", // emerald-500
+        };
+
+        const series: any[] = [];
+
+        selectedIndicators.forEach(ind => {
+            if (ind === 'rsi') return; // RSI is separate chart
+
+            if (ind === 'macd') {
+                // Add MACD line and signal line
+                ['macd', 'macd_signal'].forEach(key => {
+                    const values = indicatorData.indicators[key];
+                    if (values && values.length > 0) {
+                        const data = indicatorData.timestamps
+                            .map((t: string, i: number) => ({
+                                time: t,
+                                value: values[i]
+                            }))
+                            .filter(item => item.value !== null && item.value !== undefined && !isNaN(item.value));
+                        if (data.length > 0) {
+                            series.push({
+                                name: key,
+                                data,
+                                color: colorMap[key] || '#a855f7',
+                                lineWidth: 2
+                            });
+                        }
+                    }
+                });
+                // MACD histogram as line (could be histogram but line simpler for now)
+                const histValues = indicatorData.indicators['macd_hist'];
+                if (histValues && histValues.length > 0) {
+                    const data = indicatorData.timestamps
+                        .map((t: string, i: number) => ({
+                            time: t,
+                            value: histValues[i]
+                        }))
+                        .filter(item => item.value !== null && item.value !== undefined && !isNaN(item.value));
+                    if (data.length > 0) {
+                        series.push({
+                            name: 'macd_hist',
+                            data,
+                            color: colorMap['macd_hist'] || '#14b8a6',
+                            lineWidth: 1
+                        });
+                    }
+                }
+            } else if (ind === 'bb') {
+                // Add Bollinger Bands: upper, middle, lower
+                ['bb_upper', 'bb_middle', 'bb_lower'].forEach(key => {
+                    const values = indicatorData.indicators[key];
+                    if (values && values.length > 0) {
+                        const data = indicatorData.timestamps
+                            .map((t: string, i: number) => ({
+                                time: t,
+                                value: values[i]
+                            }))
+                            .filter(item => item.value !== null && item.value !== undefined && !isNaN(item.value));
+                        if (data.length > 0) {
+                            series.push({
+                                name: key,
+                                data,
+                                color: colorMap[key] || '#94a3b8',
+                                lineWidth: 1
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Single indicator (sma20, sma50, ema20)
+                const values = indicatorData.indicators[ind];
+                if (values && values.length > 0) {
+                    const data = indicatorData.timestamps
+                        .map((t: string, i: number) => ({
+                            time: t,
+                            value: values[i]
+                        }))
+                        .filter(item => item.value !== null && item.value !== undefined && !isNaN(item.value));
+                    if (data.length > 0) {
+                        series.push({
+                            name: ind,
+                            data,
+                            color: colorMap[ind] || '#ffffff',
+                            lineWidth: 2
+                        });
+                    }
+                }
+            }
+        });
+
+        return series;
+    }, [indicatorData, selectedIndicators]);
+
     if (!mounted) return (
         <div className="flex-1 p-8 pt-6">
             <h2 className="text-3xl font-bold text-white animate-pulse">Loading Technical Analysis...</h2>
@@ -274,20 +440,51 @@ export default function TechnicalPage() {
                         {/* Ticker Selector */}
                         <TickerSearch value={ticker} onChange={(val) => setTicker(val)} />
 
-                        {/* Timeframe Buttons */}
-                        <div className="flex gap-1 bg-slate-950/60 p-1 rounded-lg border border-slate-800/50">
-                            {TIMEFRAMES.map(tf => (
-                                <button
-                                    key={tf.label}
-                                    onClick={() => setTimeframe(tf)}
-                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${timeframe.label === tf.label
-                                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                                            : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                                        }`}
-                                >
-                                    {tf.label}
-                                </button>
-                            ))}
+                        {/* Timeframe Dropdown */}
+                        <div className="relative z-[502]">
+                            <button
+                                onClick={() => setShowTimeframeMenu(v => !v)}
+                                className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 transition-all min-w-[140px]"
+                            >
+                                <span className="truncate">{timeframe.label}</span>
+                                <ChevronDown className="w-4 h-4 shrink-0" />
+                            </button>
+
+                            {/* Timeframe Dropdown Menu */}
+                            {showTimeframeMenu && (
+                                <div className="absolute left-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl min-w-[240px] max-h-[400px] overflow-y-auto z-[99999] ring-2 ring-indigo-500/20 animate-in fade-in zoom-in duration-200">
+                                    <div className="flex items-center justify-between mb-2 px-1">
+                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Timeframe</p>
+                                        <button onClick={() => setShowTimeframeMenu(false)} className="text-slate-500 hover:text-white">✕</button>
+                                    </div>
+
+                                    {TIMEFRAME_SECTIONS.map((section, idx) => (
+                                        <div key={idx} className="mb-3 last:mb-0">
+                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1.5 px-1">
+                                                {section.category}
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-1">
+                                                {section.options.map(opt => (
+                                                    <button
+                                                        key={opt.interval}
+                                                        onClick={() => {
+                                                            setTimeframe(opt)
+                                                            setShowTimeframeMenu(false)
+                                                        }}
+                                                        className={`text-left px-2 py-1.5 text-xs rounded transition-all ${
+                                                            timeframe.interval === opt.interval
+                                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
+                                                                : "text-slate-400 hover:bg-slate-800 hover:text-white border border-transparent"
+                                                        }`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -370,7 +567,7 @@ export default function TechnicalPage() {
                 <div className="grid gap-6 lg:grid-cols-4 relative z-0">
                     {/* Chart */}
                     <div className="col-span-4 xl:col-span-3">
-                        <div className="h-[500px] rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden relative">
+                        <div className="min-h-[600px] rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden relative">
                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 pointer-events-none" />
                             {loading ? (
                                 <div className="h-full flex items-center justify-center text-slate-500 text-sm">
@@ -389,6 +586,8 @@ export default function TechnicalPage() {
                                         setSelectedPattern(null);
                                         setHighlightRange(null);
                                     }}
+                                    interval={timeframe.interval}
+                                    extraIndicators={extraIndicatorSeries}
                                 />
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
