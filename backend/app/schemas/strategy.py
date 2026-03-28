@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 # Shared properties
@@ -22,9 +22,7 @@ class StrategyInDBBase(StrategyBase):
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Properties to return to client
 class Strategy(StrategyInDBBase):

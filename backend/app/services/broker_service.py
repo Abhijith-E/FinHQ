@@ -22,6 +22,7 @@ class BrokerService:
         )
         portfolio = result.scalars().first()
         if not portfolio:
+            print(f"[DEBUG] No portfolio found for user {user_id}, creating new one")
             portfolio = models.Portfolio(
                 user_id=user_id,
                 name="Default Portfolio",
@@ -29,6 +30,9 @@ class BrokerService:
             )
             db.add(portfolio)
             await db.flush()
+            print(f"[DEBUG] Created new portfolio with ID: {portfolio.id}")
+        else:
+            print(f"[DEBUG] Found existing portfolio with ID: {portfolio.id}")
         return portfolio
 
     async def _get_simulated_price(self, ticker: str) -> float:
@@ -49,7 +53,10 @@ class BrokerService:
         Market orders are filled at real market price fetched via yfinance.
         Limit orders are filled if price is favorable.
         """
+        print(f"[DEBUG] Placing order: user={user_id}, ticker={order_in.ticker}, side={order_in.side}, qty={order_in.quantity}, type={order_in.type}")
+
         portfolio = await self._get_or_create_portfolio(db, user_id)
+        print(f"[DEBUG] Using portfolio ID: {portfolio.id}, cash_balance: {portfolio.cash_balance}")
 
         # Ensure stock exists in database
         stmt = select(Stock).where(Stock.ticker == order_in.ticker.upper())
@@ -57,6 +64,7 @@ class BrokerService:
         stock = result.scalars().first()
         if not stock:
             # Fetch stock details from yfinance and create locally
+            print(f"[DEBUG] Stock {order_in.ticker} not found, creating new stock record")
             details = await stock_data_service.fetch_stock_details(order_in.ticker)
             stock = Stock(
                 ticker=details.get("Symbol", order_in.ticker.upper()),
@@ -68,6 +76,9 @@ class BrokerService:
             )
             db.add(stock)
             await db.flush()
+            print(f"[DEBUG] Created stock ID: {stock.id}")
+        else:
+            print(f"[DEBUG] Found existing stock ID: {stock.id}")
 
         # Get real current price using yfinance (with fallback to simulation)
         try:
@@ -77,7 +88,10 @@ class BrokerService:
                 raise ValueError("No price in quote")
         except Exception as e:
             # Fallback to simulated price if yfinance fails
+            print(f"[DEBUG] Live quote failed for {order_in.ticker}: {e}, using simulated price")
             current_price = await self._get_simulated_price(order_in.ticker)
+
+        print(f"[DEBUG] Current price for {order_in.ticker}: {current_price}")
 
         # Determine fill price and status
         if order_in.type == OrderType.MARKET:
@@ -104,6 +118,8 @@ class BrokerService:
             fill_price = current_price
             status = OrderStatus.FILLED
 
+        print(f"[DEBUG] Order status: {status}, fill_price: {fill_price}")
+
         # Validate buying power for BUY orders that will fill
         if order_in.side == OrderSide.BUY and status == OrderStatus.FILLED and fill_price:
             cost = fill_price * order_in.quantity
@@ -122,16 +138,23 @@ class BrokerService:
             filled_avg_price=fill_price
         )
         db.add(db_order)
+        await db.flush()  # Get db_order.id before passing to _update_positions
+        print(f"[DEBUG] Added order to session, order ID: {db_order.id}")
 
         # If filled, update portfolio positions and cash
         if status == OrderStatus.FILLED and fill_price:
-            await self._update_positions(db, portfolio, order_in, fill_price, stock.id)
+            print("[DEBUG] Order filled, updating positions")
+            await self._update_positions(db, portfolio, order_in, fill_price, stock.id, order_id=db_order.id)
+            print("[DEBUG] Positions updated")
+        else:
+            print("[DEBUG] Order not filled, skipping position update")
 
         await db.commit()
         await db.refresh(db_order)
+        print(f"[DEBUG] Order committed, order ID: {db_order.id}")
         return db_order
 
-    async def _update_positions(self, db: AsyncSession, portfolio: models.Portfolio, order_in: schemas.OrderCreate, fill_price: float, stock_id: int):
+    async def _update_positions(self, db: AsyncSession, portfolio: models.Portfolio, order_in: schemas.OrderCreate, fill_price: float, stock_id: int, order_id: int = None):
         """Update portfolio positions and cash balance after a fill."""
         from app.models.portfolio import TransactionType
 
@@ -144,65 +167,104 @@ class BrokerService:
         )
         position = result.scalars().first()
 
+        print(f"[DEBUG] _update_positions: side={order_in.side}, qty={order_in.quantity}, fill_price={fill_price}, portfolio_id={portfolio.id}, stock_id={stock_id}")
+
         if order_in.side == OrderSide.BUY:
-            cost = fill_price * order_in.quantity
-            portfolio.cash_balance -= cost
+            cost = float(fill_price) * float(order_in.quantity)
+            portfolio.cash_balance = float(portfolio.cash_balance) - cost
+            print(f"[DEBUG] Deducted cost {cost} from cash_balance, new balance: {portfolio.cash_balance}")
 
             if position:
-                # Average down/up cost basis
-                total_qty = position.quantity + order_in.quantity
-                position.average_price = ((position.quantity * position.average_price) + (order_in.quantity * fill_price)) / total_qty
+                # Average down/up cost basis with precise float arithmetic
+                old_qty = float(position.quantity)
+                new_qty = float(order_in.quantity)
+                total_qty = old_qty + new_qty
+                position.average_price = round(((old_qty * float(position.average_price)) + (new_qty * float(fill_price))) / total_qty, 4)
                 position.quantity = total_qty
+                print(f"[DEBUG] Updated existing position: qty={position.quantity}, avg_price={position.average_price}")
             else:
                 position = models.Position(
                     portfolio_id=portfolio.id,
                     stock_id=stock_id,
-                    quantity=order_in.quantity,
-                    average_price=fill_price
+                    quantity=float(order_in.quantity),
+                    average_price=float(fill_price)
                 )
                 db.add(position)
+                await db.flush()  # flush so position gets its ID
+                print(f"[DEBUG] Created new position: qty={order_in.quantity}, avg_price={fill_price}, id={position.id}")
 
         elif order_in.side == OrderSide.SELL:
-            if not position or position.quantity < order_in.quantity:
+            if not position or float(position.quantity) < float(order_in.quantity):
                 raise HTTPException(status_code=400, detail="Insufficient shares to sell")
-            proceeds = fill_price * order_in.quantity
-            portfolio.cash_balance += proceeds
-            position.quantity -= order_in.quantity
-            if position.quantity == 0:
+            proceeds = float(fill_price) * float(order_in.quantity)
+            portfolio.cash_balance = float(portfolio.cash_balance) + proceeds
+            position.quantity = float(position.quantity) - float(order_in.quantity)
+            print(f"[DEBUG] Sold {order_in.quantity} shares, new qty: {position.quantity}, cash_balance: {portfolio.cash_balance}")
+            if position.quantity <= 0:
                 await db.delete(position)
+                print("[DEBUG] Position quantity reached 0, deleted position")
+                position = None
 
-        # Log a transaction
+        # Log a Transaction record (portfolio ledger)
         transaction = models.Transaction(
             portfolio_id=portfolio.id,
             stock_id=stock_id,
             type=TransactionType.BUY.value if order_in.side == OrderSide.BUY else TransactionType.SELL.value,
-            quantity=order_in.quantity,
-            price=fill_price,
+            quantity=float(order_in.quantity),
+            price=float(fill_price),
             timestamp=datetime.utcnow()
         )
         db.add(transaction)
+        print("[DEBUG] Added transaction to session")
+
+        # Also create a Trade record linked to the order (for execution history)
+        if order_id is not None:
+            trade = models.Trade(
+                order_id=order_id,
+                execution_price=float(fill_price),
+                quantity=int(order_in.quantity),
+            )
+            db.add(trade)
+            print(f"[DEBUG] Added Trade record for order_id={order_id}")
+
+        # Flush to ensure all writes are staged and errors surface early
+        try:
+            await db.flush()
+            print("[DEBUG] Flush successful")
+        except Exception as e:
+            print(f"[DEBUG] Flush failed: {e}")
+            raise
 
     async def get_user_orders(self, db: AsyncSession, user_id: int):
         """Retrieve all orders for a user."""
+        print(f"[DEBUG] get_user_orders called for user_id={user_id}")
         result = await db.execute(
             select(models.Order).where(models.Order.user_id == user_id).order_by(models.Order.created_at.desc())
         )
-        return result.scalars().all()
+        orders = result.scalars().all()
+        print(f"[DEBUG] Found {len(orders)} orders for user {user_id}")
+        return orders
 
     async def get_user_positions(self, db: AsyncSession, user_id: int):
         """Get current positions with live prices from yfinance."""
+        print(f"[DEBUG] get_user_positions called for user_id={user_id}")
+
         from sqlalchemy.orm import selectinload
         portfolio = await self._get_or_create_portfolio(db, user_id)
+        print(f"[DEBUG] Portfolio ID: {portfolio.id}, cash_balance: {portfolio.cash_balance}")
+
         result = await db.execute(
             select(models.Position)
             .where(models.Position.portfolio_id == portfolio.id)
             .options(selectinload(models.Position.stock))
         )
         positions = result.scalars().all()
+        print(f"[DEBUG] Found {len(positions)} positions for portfolio {portfolio.id}")
 
         enriched = []
         for pos in positions:
             ticker = pos.stock.ticker if pos.stock else "UNKNOWN"
+            print(f"[DEBUG] Processing position: id={pos.id}, ticker={ticker}, qty={pos.quantity}, avg={pos.average_price}")
             # Fetch real-time price with fallback to simulated
             try:
                 quote = await stock_data_service.get_live_quote(ticker)
@@ -223,6 +285,7 @@ class BrokerService:
                 "unrealized_pnl_pct": round((unrealized_pnl / (pos.average_price * pos.quantity)) * 100, 2) if pos.average_price > 0 else 0
             })
 
+        print(f"[DEBUG] Returning {len(enriched)} enriched positions")
         return {
             "cash_balance": portfolio.cash_balance,
             "positions": enriched,

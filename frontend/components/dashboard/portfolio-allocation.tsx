@@ -13,40 +13,40 @@ const data = [
 
 export function PortfolioAllocation() {
     return (
-        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl flex flex-col h-full">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-300">
+        <Card className="border-[#1E222D] bg-[#161A1E] backdrop-blur-sm flex flex-col h-full overflow-hidden">
+            <CardHeader className="pb-2 pt-3 px-4 shrink-0">
+                <CardTitle className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                     Asset Allocation
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex items-center justify-center p-0 pb-4">
-                <div className="w-full h-[240px]">
+            <CardContent className="flex-1 flex items-center justify-center p-4 pt-0">
+                <div className="w-full h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
-                                paddingAngle={5}
+                                innerRadius={50}
+                                outerRadius={70}
+                                paddingAngle={3}
                                 dataKey="value"
                                 stroke="none"
                             >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer stroke-slate-950 stroke-2" />
+                                    <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity cursor-pointer" />
                                 ))}
                             </Pie>
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '0.5rem' }}
-                                itemStyle={{ color: '#f8fafc' }}
+                                contentStyle={{ backgroundColor: '#161A1E', borderColor: '#1E222D', borderRadius: '0.5rem' }}
+                                itemStyle={{ color: '#FFFFFF' }}
                                 formatter={(value: any) => `₹${Number(value).toLocaleString()}`}
                             />
                             <Legend
                                 verticalAlign="bottom"
                                 height={36}
                                 iconType="circle"
-                                wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                                wrapperStyle={{ fontSize: '10px', paddingTop: '8px', color: '#94A3B8' }}
                             />
                         </PieChart>
                     </ResponsiveContainer>

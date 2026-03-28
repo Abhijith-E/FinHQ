@@ -16,8 +16,9 @@ import {
     Bell,
     Users,
     GraduationCap,
-    Briefcase
+    Briefcase,
 } from "lucide-react"
+import { useState } from "react"
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -41,6 +42,7 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname()
     const router = useRouter()
+    const [sidebarHovered, setSidebarHovered] = useState(false)
 
     const handleLogout = () => {
         localStorage.removeItem("access_token")
@@ -48,60 +50,71 @@ export default function DashboardLayout({
         router.push("/login")
     }
 
+    // Ghost Rail: 60px collapsed (icons only), 200px expanded on hover
+    const sidebarWidth = sidebarHovered ? "200px" : "60px"
+
     return (
-        <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-            <div className="hidden border-r bg-gray-100/40 lg:block dark:bg-gray-800/40">
-                <div className="flex h-full max-h-screen flex-col">
-                    <div className="flex h-[60px] items-center border-b px-6 shrink-0">
-                        <Link className="flex items-center gap-2 font-semibold" href="/">
-                            <LineChart className="h-6 w-6" />
-                            <span className="">FinTech AI</span>
-                        </Link>
-                    </div>
-                    <div className="flex-1 overflow-y-auto py-2">
-                        <nav className="grid items-start px-4 text-sm font-medium gap-1">
-                            {navItems.map(({ href, label, icon: Icon }) => {
-                                const isActive = pathname === href || pathname.startsWith(href + "/")
-                                return (
-                                    <Link
-                                        key={href}
-                                        href={href}
-                                        className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all
-                                            ${isActive
-                                                ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-50 font-semibold"
-                                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                                            }`}
-                                    >
-                                        <Icon className={`h-4 w-4 ${isActive ? "text-indigo-500" : ""}`} />
+        <div className="grid h-screen w-full overflow-hidden bg-[#0B0E11]" style={{ gridTemplateColumns: 'auto 1fr' }}>
+            {/* Ghost Rail Sidebar - Left */}
+            <div
+                className="hidden lg:block relative border-r border-[#1E222D] bg-[#0B0E11]"
+                onMouseEnter={() => setSidebarHovered(true)}
+                onMouseLeave={() => setSidebarHovered(false)}
+                style={{
+                    width: sidebarWidth,
+                    transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    overflow: 'hidden',
+                }}
+            >
+                <div className="flex h-8 items-center border-b border-[#1E222D] px-2 shrink-0">
+                    <Link className="flex items-center gap-2 font-semibold text-white transition-all" href="/">
+                        <LineChart className="h-4 w-4 text-indigo-400 shrink-0" />
+                        <span className={`text-xs whitespace-nowrap transition-opacity duration-200 ${sidebarHovered ? 'opacity-100' : 'opacity-0'}`}>
+                            FinTech AI
+                        </span>
+                    </Link>
+                </div>
+                <div className="flex-1 overflow-y-auto py-1 px-1">
+                    <nav className="grid items-start gap-0.5">
+                        {navItems.map(({ href, label, icon: Icon }) => {
+                            const isActive = pathname === href || pathname.startsWith(href + "/")
+                            return (
+                                <Link
+                                    key={href}
+                                    href={href}
+                                    className={`group flex items-center gap-3 rounded px-2 py-1.5 transition-all
+                                        ${isActive
+                                            ? "bg-[#161A1E] text-white border border-[#1E222D]"
+                                            : "text-slate-400 hover:text-white hover:bg-[#161A1E]/50 border border-transparent"
+                                        }
+                                    `}
+                                >
+                                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-indigo-400" : ""}`} />
+                                    <span className={`text-[10px] whitespace-nowrap transition-all duration-200 ${sidebarHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}>
                                         {label}
-                                    </Link>
-                                )
-                            })}
-                        </nav>
-                    </div>
+                                    </span>
+                                </Link>
+                            )
+                        })}
+                    </nav>
+                </div>
+                {/* Logout at bottom */}
+                <div className="p-1 border-t border-[#1E222D]">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 rounded px-2 py-1.5 text-slate-400 hover:text-white hover:bg-[#161A1E]/50 transition-all border border-transparent"
+                    >
+                        <LogOut className="h-4 w-4 shrink-0" />
+                        <span className={`text-[10px] whitespace-nowrap transition-all duration-200 ${sidebarHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2'}`}>
+                            Logout
+                        </span>
+                    </button>
                 </div>
             </div>
-            <div className="flex flex-col">
-                <header className="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-gray-100/40 px-6 dark:bg-gray-800/40">
-                    <div className="w-full flex-1">
-                        <span className="font-semibold text-lg">FinTech AI Platform</span>
-                    </div>
-                </header>
-                <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
-                    {children}
-                </main>
-                <footer className="mt-auto border-t bg-gray-100/40 p-4 dark:bg-gray-800/40 flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                    <div>
-                        &copy; 2026 FinTech AI Platform. All rights reserved.
-                    </div>
-                    <div 
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 hover:text-gray-900 dark:hover:text-gray-50 cursor-pointer transition-colors px-2 py-1 rounded-md hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
-                    >
-                        <LogOut className="h-4 w-4" />
-                        Logout
-                    </div>
-                </footer>
+
+            {/* Main Content Column */}
+            <div className="flex flex-col bg-[#0B0E11] overflow-y-auto overflow-x-hidden">
+                {children}
             </div>
         </div>
     )

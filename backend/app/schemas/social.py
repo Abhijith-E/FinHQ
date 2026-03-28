@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 # Shared properties for Comment
@@ -16,9 +16,7 @@ class Comment(CommentBase):
     created_at: datetime
     # In a real app, we'd include user info (name/avatar) here
     user_name: Optional[str] = "User" 
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Shared properties for Post
 class PostBase(BaseModel):
@@ -35,6 +33,4 @@ class Post(PostBase):
     created_at: datetime
     comments: List[Comment] = []
     user_name: Optional[str] = "User"
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

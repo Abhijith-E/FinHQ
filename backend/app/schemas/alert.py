@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from enum import Enum
 
@@ -27,9 +27,7 @@ class Alert(AlertBase):
     status: AlertStatus
     created_at: datetime
     triggered_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class NotificationBase(BaseModel):
     title: str
@@ -40,6 +38,4 @@ class Notification(NotificationBase):
     user_id: int
     is_read: bool
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

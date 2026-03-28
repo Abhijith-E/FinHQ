@@ -69,7 +69,7 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/auth/login/verify-2fa`, {
+            const res = await fetch(`${API_BASE}/auth/login/verify-2fa`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: tempToken, code: totpCode }),

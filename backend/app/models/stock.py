@@ -19,6 +19,7 @@ class Stock(Base):
     prices = relationship("OHLCVData", back_populates="stock")
     transactions = relationship("Transaction", back_populates="stock")
     fundamentals = relationship("FundamentalData", back_populates="stock", uselist=False)
+    positions = relationship("Position", back_populates="stock")
 
 class OHLCVData(Base):
     __tablename__ = "ohlcv_data"

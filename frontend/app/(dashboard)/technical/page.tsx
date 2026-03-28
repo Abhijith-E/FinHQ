@@ -2,12 +2,12 @@
 
 import dynamic from "next/dynamic"
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, TrendingUp, TrendingDown, RefreshCw, BarChart2, Zap, Target, ChevronDown } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, BarChart2, Zap, Target, ChevronDown } from "lucide-react"
 import ErrorBoundary from "@/components/error-boundary"
 import { TickerSearch } from "@/components/ticker-search"
 import AIPatternDetection from "@/components/ai-pattern-detection"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 const TradingChart = dynamic(
     () => import("@/components/trading-chart").then((mod) => mod.TradingChart),
@@ -101,6 +101,16 @@ const TIMEFRAME_SECTIONS = [
 // Default timeframe: 1 Day
 const DEFAULT_TIMEFRAME = { label: "1 Day", interval: "1d", limit: 200 }
 
+// Quick timeframe options for the horizontal bar
+const QUICK_TIMEFRAMES = [
+    { label: "1D", interval: "1d", limit: 200 },
+    { label: "1W", interval: "1wk", limit: 52 },
+    { label: "1M", interval: "1mo", limit: 60 },
+    { label: "3M", interval: "3mo", limit: 24 },
+    { label: "1Y", interval: "1y", limit: 120 },
+    { label: "ALL", interval: "5y", limit: 60 },
+]
+
 const INDICATOR_OPTIONS = ["sma20", "sma50", "ema20", "rsi", "macd", "bb"]
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
@@ -154,7 +164,7 @@ async function fetchIndicators(ticker: string, selected: string[]): Promise<Indi
 async function fetchAdvancedPatterns(candles: Candle[]) {
     if (candles.length < 10) return null
     try {
-        const res = await fetch(`${API_BASE}/api/v1/technical/analyze`, {
+        const res = await fetch(`${API_BASE}/technical/analyze`, {
             method: 'POST',
             headers: {
                 ...getAuthHeaders(),
@@ -195,9 +205,26 @@ function getSupportResistance(candles: Candle[]) {
     const recent = candles.slice(-40)
     const highs = recent.map(c => c.high).sort((a, b) => b - a)
     const lows = recent.map(c => c.low).sort((a, b) => a - b)
+
+    // Safe access with fallbacks - handle null/undefined values
+    const getValue = (arr: number[], index: number, fallback: number = 0): number => {
+        const val = arr[index]
+        if (val == null) return fallback // catches both null and undefined
+        return parseFloat(val.toFixed(2))
+    }
+
+    const firstHigh = highs[0] != null ? highs[0] : 0
+    const firstLow = lows[0] != null ? lows[0] : 0
+
     return {
-        resistance: [parseFloat(highs[0].toFixed(2)), parseFloat(highs[4].toFixed(2))],
-        support: [parseFloat(lows[0].toFixed(2)), parseFloat(lows[4].toFixed(2))],
+        resistance: [
+            getValue(highs, 0),
+            getValue(highs, 4, firstHigh)
+        ],
+        support: [
+            getValue(lows, 0),
+            getValue(lows, 4, firstLow)
+        ],
     }
 }
 
@@ -229,8 +256,32 @@ export default function TechnicalPage() {
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
     const [highlightRange, setHighlightRange] = useState<{ from: string | number; to: string | number } | null>(null)
     const [selectedPattern, setSelectedPattern] = useState<any>(null)
+    const [isLargeScreen, setIsLargeScreen] = useState(false)
+    const [rightPanelOpen, setRightPanelOpen] = useState(false)
+    const [crosshairData, setCrosshairData] = useState<{
+        time: string;
+        ohlc: { open: number; high: number; low: number; close: number };
+        indicators: Record<string, number>;
+    } | null>(null)
 
     useEffect(() => { setMounted(true) }, [])
+
+    // Responsive: detect screen width for right panel
+    useEffect(() => {
+        const checkScreen = () => {
+            const width = window.innerWidth;
+            const large = width >= 1200;
+            setIsLargeScreen(large);
+            if (!large) {
+                setRightPanelOpen(false); // auto-close drawer on small screens
+            } else {
+                setRightPanelOpen(true); // ensure open on large
+            }
+        };
+        checkScreen();
+        window.addEventListener('resize', checkScreen);
+        return () => window.removeEventListener('resize', checkScreen);
+    }, [])
 
     const loadData = useCallback(async () => {
         setLoading(true)
@@ -278,7 +329,7 @@ export default function TechnicalPage() {
     const volumeSeries = candles.map(c => ({
         time: c.time,
         value: c.volume,
-        color: c.close >= c.open ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"
+        color: c.close >= c.open ? "rgba(38, 166, 154, 0.4)" : "rgba(239, 83, 80, 0.4)"
     }))
 
     const latestRsi = getLatestRsi(candles)
@@ -302,16 +353,19 @@ export default function TechnicalPage() {
             return [];
         }
 
+        const PRO_GREEN = "#00C076";
+        const PRO_RED = "#FF3B69";
+
         const colorMap: Record<string, string> = {
-            sma20: "#f59e0b", // amber-400
-            sma50: "#6366f1", // indigo-500
-            ema20: "#06b6d4", // cyan-400
-            macd: "#a855f7", // purple-500
-            macd_signal: "#ec4899", // pink-500
-            macd_hist: "#14b8a6", // teal-500
-            bb_upper: "#f43f5e", // rose-500
-            bb_middle: "#94a3b8", // slate-400
-            bb_lower: "#10b981", // emerald-500
+            sma20: PRO_GREEN,
+            sma50: PRO_RED,
+            ema20: "#06b6d4", // cyan for differentiation
+            macd: PRO_GREEN,
+            macd_signal: PRO_RED,
+            macd_hist: "#6b7280", // neutral gray
+            bb_upper: PRO_RED,
+            bb_middle: "#6b7280",
+            bb_lower: PRO_GREEN,
         };
 
         const series: any[] = [];
@@ -413,168 +467,216 @@ export default function TechnicalPage() {
     return (
         <ErrorBoundary>
             <SupportResistanceStyles />
-            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-h-[calc(100vh-60px)] overflow-y-auto relative">
+            <div className="min-h-full flex-shrink-0 flex flex-col">
 
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight text-white mb-1 flex items-center gap-3">
-                            <Activity className="w-8 h-8 text-indigo-400" />
-                            Technical Analysis
-                        </h2>
-                        <p className="text-slate-400 text-sm">Real-time charting, indicators, pattern recognition – powered by Yahoo Finance.</p>
-                    </div>
-                    <button
-                        onClick={loadData}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-lg transition-all"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                        {loading ? "Fetching..." : "Refresh"}
-                    </button>
-                </div>
-
-                {/* Action Bar */}
-                <div className="flex flex-wrap items-center justify-between bg-slate-900/60 px-4 py-3 rounded-xl border border-slate-800 backdrop-blur-md mb-4 gap-4 relative z-[500] isolate">
-                    <div className="flex items-center gap-4">
-                        {/* Ticker Selector */}
-                        <TickerSearch value={ticker} onChange={(val) => setTicker(val)} />
-
-                        {/* Timeframe Dropdown */}
-                        <div className="relative z-[502]">
-                            <button
-                                onClick={() => setShowTimeframeMenu(v => !v)}
-                                className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 transition-all min-w-[140px]"
-                            >
-                                <span className="truncate">{timeframe.label}</span>
-                                <ChevronDown className="w-4 h-4 shrink-0" />
-                            </button>
-
-                            {/* Timeframe Dropdown Menu */}
-                            {showTimeframeMenu && (
-                                <div className="absolute left-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl min-w-[240px] max-h-[400px] overflow-y-auto z-[99999] ring-2 ring-indigo-500/20 animate-in fade-in zoom-in duration-200">
-                                    <div className="flex items-center justify-between mb-2 px-1">
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Timeframe</p>
-                                        <button onClick={() => setShowTimeframeMenu(false)} className="text-slate-500 hover:text-white">✕</button>
-                                    </div>
-
-                                    {TIMEFRAME_SECTIONS.map((section, idx) => (
-                                        <div key={idx} className="mb-3 last:mb-0">
-                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1.5 px-1">
-                                                {section.category}
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-1">
-                                                {section.options.map(opt => (
-                                                    <button
-                                                        key={opt.interval}
-                                                        onClick={() => {
-                                                            setTimeframe(opt)
-                                                            setShowTimeframeMenu(false)
-                                                        }}
-                                                        className={`text-left px-2 py-1.5 text-xs rounded transition-all ${
-                                                            timeframe.interval === opt.interval
-                                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
-                                                                : "text-slate-400 hover:bg-slate-800 hover:text-white border border-transparent"
-                                                        }`}
-                                                    >
-                                                        {opt.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                {/* ===== GLOBAL MARKET TICKER RIBBON ===== */}
+                <div className="flex-shrink-0 h-8 bg-[#161A1E] border-b border-[#1E222D] overflow-hidden">
+                    <div className="flex items-center h-full text-[10px] font-mono justify-center gap-8">
+                        <div className="flex items-center gap-3 px-4 border-r border-[#1E222D]">
+                            <span className="text-slate-500 font-bold">NIFTY 50</span>
+                            <span className="text-white">22,450.35</span>
+                            <span className="text-[#26A69A]">+125.45 (0.56%)</span>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 border-l border-[#1E222D]">
+                            <span className="text-slate-500 font-bold">SENSEX</span>
+                            <span className="text-white">74,250.80</span>
+                            <span className="text-[#26A69A]">+420.15 (0.57%)</span>
                         </div>
                     </div>
+                </div>
 
-                    {/* Indicator Picker */}
-                    <div className="relative z-[501]">
+                {/* ===== COMPACT HEADER RIBBON ===== */}
+                <div className="flex-shrink-0 h-12 bg-[#161A1E] border-b border-[#1E222D] px-4 flex items-center gap-4 relative z-50">
+
+                    {/* Ticker Search */}
+                    <div className="flex items-center gap-3">
+                        <TickerSearch value={ticker} onChange={(val) => setTicker(val)} />
+                    </div>
+
+                    {/* OHLC Values - crosshair data when hovering, else latest */}
+                    {candles.length > 0 && (
+                        <div className="flex items-center gap-4 text-[10px] font-mono ml-2 pl-3 border-l border-[#1E222D]">
+                            <span className="text-slate-500">O</span>
+                            <span className="text-slate-300">
+                                ₹{(crosshairData?.ohlc.open ?? candles[candles.length - 1]?.open ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-[#26A69A]">H</span>
+                            <span className="text-[#26A69A]">
+                                ₹{(crosshairData?.ohlc.high ?? candles[candles.length - 1]?.high ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-[#EF5350]">L</span>
+                            <span className="text-[#EF5350]">
+                                ₹{(crosshairData?.ohlc.low ?? candles[candles.length - 1]?.low ?? 0).toFixed(2)}
+                            </span>
+                            <span className="text-slate-300">C</span>
+                            <span className="text-slate-300">
+                                ₹{(crosshairData?.ohlc.close ?? candles[candles.length - 1]?.close ?? 0).toFixed(2)}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Quick Timeframe Buttons */}
+                    <div className="flex items-center gap-1">
+                        {QUICK_TIMEFRAMES.map(opt => (
+                            <button
+                                key={opt.interval}
+                                onClick={() => setTimeframe(opt)}
+                                className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${
+                                    timeframe.interval === opt.interval
+                                        ? "bg-[#26A69A]/20 text-[#26A69A] border border-[#26A69A]/40"
+                                        : "text-slate-400 hover:text-white hover:bg-[#161A1E] border border-transparent"
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Timeframe Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowTimeframeMenu(v => !v)}
+                            className="flex items-center gap-2 px-2 py-1 text-[10px] font-bold rounded bg-[#0B0E11] border border-[#1E222D] text-slate-300 hover:bg-[#161A1E] hover:text-white transition-all min-w-[100px]"
+                        >
+                            <span className="truncate">{timeframe.label}</span>
+                            <ChevronDown className="w-3 h-3 shrink-0" />
+                        </button>
+
+                        {/* Timeframe Dropdown Menu */}
+                        {showTimeframeMenu && (
+                            <div className="absolute left-0 top-full mt-1 bg-[#0B0E11] border border-[#1E222D] rounded-lg p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
+                                {TIMEFRAME_SECTIONS.map((section, idx) => (
+                                    <div key={idx} className="mb-2 last:mb-0">
+                                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">
+                                            {section.category}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {section.options.map(opt => (
+                                                <button
+                                                    key={opt.interval}
+                                                    onClick={() => {
+                                                        setTimeframe(opt)
+                                                        setShowTimeframeMenu(false)
+                                                    }}
+                                                    className={`text-left px-2 py-1 text-[10px] rounded transition-all ${
+                                                        timeframe.interval === opt.interval
+                                                            ? "bg-[#26A69A]/20 text-[#26A69A] border border-[#26A69A]/40"
+                                                            : "text-slate-400 hover:text-white hover:bg-[#161A1E] border border-transparent"
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Indicator Selector */}
+                    <div className="relative">
                         <button
                             onClick={() => setShowIndicatorMenu(v => !v)}
-                            className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 transition-all"
+                            className="flex items-center gap-2 px-2 py-1 text-[10px] font-bold rounded bg-[#0B0E11] border border-[#1E222D] text-indigo-400 hover:text-indigo-300 hover:bg-[#161A1E] transition-all min-w-[90px]"
                         >
-                            <BarChart2 className="w-4 h-4 text-indigo-400" />
-                            Indicators
+                            <BarChart2 className="w-3 h-3" />
+                            <span className="truncate">Indicators</span>
                             {selectedIndicators.length > 0 && (
-                                <span className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{selectedIndicators.length}</span>
+                                <span className="bg-indigo-600 text-white text-[8px] px-1 py-0.5 rounded-full">{selectedIndicators.length}</span>
                             )}
                         </button>
 
                         {/* Indicators Dropdown Menu */}
                         {showIndicatorMenu && (
-                            <div className="absolute right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl min-w-[200px] z-[99999] ring-2 ring-indigo-500/20 animate-in fade-in zoom-in duration-200">
-                                <div className="flex items-center justify-between mb-3 px-1">
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Indicators</p>
-                                    <button onClick={() => setShowIndicatorMenu(false)} className="text-slate-500 hover:text-white">✕</button>
+                            <div className="absolute right-0 top-full mt-1 bg-[#0B0E11] border border-[#1E222D] rounded-lg p-2 min-w-[180px] max-h-[280px] overflow-y-auto z-50">
+                                <div className="flex items-center justify-between mb-2 px-1">
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Indicators</p>
+                                    <button onClick={() => setShowIndicatorMenu(false)} className="text-slate-500 hover:text-white text-xs">✕</button>
                                 </div>
-                                {INDICATOR_OPTIONS.map(ind => (
-                                    <button
-                                        key={ind}
-                                        onClick={() => toggleIndicator(ind)}
-                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg mb-1.5 flex items-center justify-between transition-all ${selectedIndicators.includes(ind)
-                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
-                                                : "text-slate-400 hover:bg-slate-800 hover:text-white border border-transparent"
+                                <div className="space-y-1">
+                                    {INDICATOR_OPTIONS.map(ind => (
+                                        <button
+                                            key={ind}
+                                            onClick={() => toggleIndicator(ind)}
+                                            className={`w-full flex items-center gap-2 px-2 py-1.5 text-[10px] rounded transition-all ${
+                                                selectedIndicators.includes(ind)
+                                                    ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40"
+                                                    : "text-slate-400 hover:text-white hover:bg-[#161A1E] border border-transparent"
                                             }`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${selectedIndicators.includes(ind) ? "bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.6)]" : "bg-slate-600"}`} />
+                                        >
+                                            <div className={`w-1.5 h-1.5 rounded-full ${selectedIndicators.includes(ind) ? "bg-indigo-400" : "bg-slate-600"}`} />
                                             {ind.toUpperCase()}
-                                        </div>
-                                        {selectedIndicators.includes(ind) && <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
-                                    </button>
-                                ))}
+                                        </button>
+                                    ))}
+                                </div>
                                 <button
                                     onClick={() => { loadData(); setShowIndicatorMenu(false) }}
-                                    className="w-full mt-3 px-3 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
+                                    className="w-full mt-2 px-2 py-1.5 text-[9px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-all"
                                 >
-                                    Update Chart
+                                    UPDATE CHART
                                 </button>
                             </div>
                         )}
                     </div>
+
+                    {/* Spacer */}
+                    <div className="flex-1" />
+
+                    {/* Live Price Display & Volume */}
+                    {quote && (
+                        <div className="flex items-center gap-4 text-[10px]">
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-bold">{quote.ticker.replace(/\.NS$/, ".NSE")}</span>
+                                <span className={`text-base font-bold font-mono ${isPositive ? "text-[#00C076]" : "text-[#FF3B69]"}`}>
+                                    ₹{quote.last.toFixed(2)}
+                                </span>
+                                <span className={`font-mono px-1.5 py-0.5 rounded border text-[9px] ${
+                                    isPositive
+                                        ? "bg-[#26A69A]/15 text-[#26A69A] border-[#26A69A]/30"
+                                        : "bg-[#EF5350]/15 text-[#EF5350] border-[#EF5350]/30"
+                                }`}>
+                                    {isPositive ? "+" : ""}{quote.change.toFixed(2)} ({quote.change_pct.toFixed(2)}%)
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-slate-400">
+                                <span>Vol: <span className="text-slate-300 font-mono">{quote.volume.toLocaleString()}</span></span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Refresh Button */}
+                    <button
+                        onClick={loadData}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold bg-[#0B0E11] border border-[#1E222D] text-slate-300 hover:text-white hover:bg-[#161A1E] rounded transition-all"
+                    >
+                        <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </button>
                 </div>
 
-                {/* Live Quote Bar */}
-                {quote && (
-                    <div className="flex flex-wrap items-center gap-6 bg-slate-950/50 px-4 py-2 rounded-xl border border-slate-800/60 mb-4 text-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="text-slate-400 font-bold">{quote.ticker.replace(/\.NS$/, ".NSE")}</span>
-                            <span className="text-2xl font-bold text-white font-mono">₹{quote.last.toFixed(2)}</span>
-                            <Badge className={`${isPositive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border-rose-500/20"} font-mono text-xs`}>
-                                {isPositive ? <TrendingUp className="w-3 h-3 inline mr-1" /> : <TrendingDown className="w-3 h-3 inline mr-1" />}
-                                {isPositive ? "+" : ""}{quote.change.toFixed(2)} ({quote.change_pct.toFixed(2)}%)
-                            </Badge>
-                        </div>
-                        {candles.length > 0 && (
-                            <div className="flex gap-4 text-slate-400 text-xs ml-2 border-l border-slate-800 pl-4">
-                                <span>O: <span className="text-slate-200">₹{candles[candles.length - 1].open.toFixed(2)}</span></span>
-                                <span>H: <span className="text-emerald-400/80">₹{candles[candles.length - 1].high.toFixed(2)}</span></span>
-                                <span>L: <span className="text-rose-400/80">₹{candles[candles.length - 1].low.toFixed(2)}</span></span>
-                                <span>C: <span className="text-slate-200">₹{candles[candles.length - 1].close.toFixed(2)}</span></span>
-                            </div>
-                        )}
-                        <div className="flex gap-6 text-slate-400 text-xs ml-auto">
-                            <span>Vol: <span className="text-slate-200">{quote.volume.toLocaleString()}</span></span>
-                        </div>
-                        {lastRefreshed && (
-                            <span className="text-[10px] text-slate-600">Updated {lastRefreshed.toLocaleTimeString()}</span>
-                        )}
-                    </div>
-                )}
+                {/* ===== BENTO GRID LAYOUT ===== */}
+                <div className={`flex-1 grid gap-0 relative ${isLargeScreen ? 'grid-cols-[1fr_320px]' : 'grid-cols-[1fr]'}`}>
 
-                {/* Main Grid */}
-                <div className="grid gap-6 lg:grid-cols-4 relative z-0">
-                    {/* Chart */}
-                    <div className="col-span-4 xl:col-span-3">
-                        <div className="min-h-[600px] rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl overflow-hidden relative">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 pointer-events-none" />
-                            {loading ? (
-                                <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-                                    <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                                    Fetching live data...
-                                </div>
-                            ) : candles.length > 0 ? (
+                    {/* ===== CHART AREA (70%+ width) ===== */}
+                    <div className="relative bg-[#0B0E11] border-r border-[#1E222D] overflow-hidden flex flex-col">
+                        {/* Toggle Right Panel (small screens) */}
+                        {!isLargeScreen && (
+                            <button
+                                onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                                className="absolute right-2 top-2 z-10 bg-[#161A1E] border border-[#1E222D] text-slate-300 px-2 py-1 text-[10px] rounded hover:bg-[#0B0E11] transition-all"
+                            >
+                                {rightPanelOpen ? 'Close Panel' : 'Open Panel'}
+                            </button>
+                        )}
+                        {loading ? (
+                            <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+                                <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+                                Fetching live data...
+                            </div>
+                        ) : candles.length > 0 ? (
+                            <div className="flex-1 flex flex-col">
                                 <TradingChart
                                     data={candles}
                                     volumeData={volumeSeries}
@@ -588,196 +690,83 @@ export default function TechnicalPage() {
                                     }}
                                     interval={timeframe.interval}
                                     extraIndicators={extraIndicatorSeries}
+                                    onCrosshairMove={(data) => setCrosshairData(data)}
                                 />
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
-                                    <BarChart2 className="w-10 h-10 opacity-30" />
-                                    <p>No data available. The backend may need authentication.</p>
-                                    <p className="text-xs text-slate-600">Try visiting <code className="text-indigo-400">http://localhost:8000/docs</code> to log in first.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Indicator Values Strip */}
-                        {indicatorData && candles.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-3">
-                                {Object.entries(indicatorData.indicators).map(([key, values]) => {
-                                    const last = [...values].reverse().find(v => v !== null && !isNaN(v as number))
-                                    if (last === undefined || last === null) return null
-                                    const colorMap: Record<string, string> = {
-                                        sma20: "text-amber-400", sma50: "text-indigo-400", ema20: "text-cyan-400",
-                                        rsi: latestRsi && latestRsi > 70 ? "text-rose-400" : latestRsi && latestRsi < 30 ? "text-emerald-400" : "text-slate-300",
-                                        macd: "text-purple-400", macd_signal: "text-pink-400", macd_hist: "text-teal-400",
-                                        bb_upper: "text-rose-300", bb_middle: "text-slate-300", bb_lower: "text-emerald-300",
-                                    }
-                                    return (
-                                        <div key={key} className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800 px-2.5 py-1 rounded-lg text-xs">
-                                            <span className="text-slate-500 uppercase tracking-wider">{key}</span>
-                                            <span className={`font-mono font-bold ${colorMap[key] || "text-slate-300"}`}>{(last as number).toFixed(2)}</span>
-                                        </div>
-                                    )
-                                })}
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
+                                <BarChart2 className="w-10 h-10 opacity-30" />
+                                <p>No data available. The backend may need authentication.</p>
+                                <p className="text-xs text-slate-600">Try visiting <code className="text-[#26A69A]">http://localhost:8000/docs</code> to log in first.</p>
                             </div>
                         )}
                     </div>
 
-                    {/* Sidebar Panels */}
-                    <div className="col-span-4 xl:col-span-1 space-y-5">
+                    {/* ===== RIGHT PANEL (Tabbed) ===== */}
+                    <div className={`bg-[#161A1E] overflow-hidden flex flex-col border-l border-[#1E222D] ${
+                        isLargeScreen ? '' : `${rightPanelOpen ? 'absolute right-0 top-0 bottom-0 w-[320px] z-50' : 'hidden'}`
+                    }`}>
+                        <Tabs defaultValue="patterns" className="flex flex-col h-full">
+                            <TabsList className="grid w-full grid-cols-2 h-8 rounded-none bg-[#0B0E11] border-b border-[#1E222D] p-0">
+                                <TabsTrigger value="patterns" className="text-[10px] font-bold data-[state=active]:bg-[#161A1E] data-[state=active]:text-[#26A69A] rounded-none text-slate-400">
+                                    PATTERNS
+                                </TabsTrigger>
+                                <TabsTrigger value="support" className="text-[10px] font-bold data-[state=active]:bg-[#161A1E] data-[state=active]:text-[#EF5350] rounded-none text-slate-400">
+                                    S/R LEVELS
+                                </TabsTrigger>
+                            </TabsList>
 
-                        {/* 🤖 AI Pattern Detection — real-time ensemble */}
-                        <AIPatternDetection
-                            candles={candles}
-                            ticker={ticker}
-                            timeframe={timeframe.interval}
-                            onSelectPattern={(pat, range, image) => {
-                                setHighlightRange(range);
-                                if (pat) {
-                                    setSelectedPattern({ ...pat, image });
-                                } else {
-                                    setSelectedPattern(null);
-                                }
-                            }}
-                        />
+                            {/* Patterns Tab */}
+                            <TabsContent value="patterns" className="flex-1 m-0 overflow-y-auto p-3">
+                                <AIPatternDetection
+                                    candles={candles}
+                                    ticker={ticker}
+                                    timeframe={timeframe.interval}
+                                    onSelectPattern={(pat, range, image) => {
+                                        setHighlightRange(range);
+                                        if (pat) {
+                                            setSelectedPattern({ ...pat, image });
+                                        } else {
+                                            setSelectedPattern(null);
+                                        }
+                                    }}
+                                />
+                            </TabsContent>
 
-                        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs text-indigo-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                                    <Zap className="w-4 h-4" /> RSI (14)
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {latestRsi !== null ? (
-                                    <>
-                                        <div className={`text-3xl font-bold font-mono mb-2 ${latestRsi > 70 ? "text-rose-400" : latestRsi < 30 ? "text-emerald-400" : "text-white"}`}>
-                                            {latestRsi}
-                                        </div>
-                                        <div className="w-full bg-slate-800 rounded-full h-2 mb-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-500 ${latestRsi > 70 ? "bg-rose-500" : latestRsi < 30 ? "bg-emerald-500" : "bg-indigo-500"}`}
-                                                style={{ width: `${latestRsi}%` }}
-                                            />
-                                        </div>
-                                        <Badge className={`text-xs ${latestRsi > 70 ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : latestRsi < 30 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-slate-700 text-slate-300 border-slate-600"}`}>
-                                            {latestRsi > 70 ? "⚠ Overbought" : latestRsi < 30 ? "🎯 Oversold" : "Neutral"}
-                                        </Badge>
-                                    </>
-                                ) : (
-                                    <p className="text-slate-500 text-sm">Loading...</p>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Support & Resistance */}
-                        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                                    <Target className="w-4 h-4" /> Support & Resistance
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ul className="space-y-2 text-sm">
-                                    {sr.resistance.map((v, i) => (
-                                        <li key={`r${i}`} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-rose-500/10">
-                                            <span className="text-rose-400 font-mono text-xs bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">R{i + 1}</span>
-                                            <span className="text-white font-mono">₹{v.toFixed(2)}</span>
-                                        </li>
-                                    ))}
-                                    <li className="flex items-center justify-center py-1">
-                                        <span className="text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-2 py-0.5">▶ Current ₹{currentPrice.toFixed(2)}</span>
-                                    </li>
-                                    {sr.support.map((v, i) => (
-                                        <li key={`s${i}`} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-emerald-500/10">
-                                            <span className="text-emerald-400 font-mono text-xs bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">S{i + 1}</span>
-                                            <span className="text-white font-mono">₹{v.toFixed(2)}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-
-                        {/* Pattern Recognition */}
-                        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-xs text-indigo-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                                    <Zap className="w-4 h-4" /> Pattern Recognition
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {advancedPatterns?.patterns && advancedPatterns.patterns.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {advancedPatterns.patterns.map((p: any, i: number) => {
-                                            const colorMap: Record<string, string> = {
-                                                "Bullish": "emerald",
-                                                "Bearish": "rose",
-                                                "Reversal": "amber"
-                                            }
-                                            const color = colorMap[p.sentiment || "Reversal"] || "indigo"
-                                            
-                                            // Ensure valid color string for Tailwind classes
-                                            // The ML service returns arbitrary pattern names
-                                            
-                                            return (
-                                            <li key={i} className={`p-2.5 rounded-lg bg-slate-950/50 border border-slate-800`}>
-                                                <div className="flex items-center justify-between text-sm">
-                                                    <span className="text-white font-medium flex items-center gap-1.5">
-                                                        <div className={`w-2 h-2 rounded-full bg-${color}-500`} />
-                                                        {p.name}
-                                                    </span>
-                                                    <span className={`font-mono text-xs text-${color}-400 font-bold`}>{typeof p.confidence === 'number' ? p.confidence.toFixed(1) : p.confidence}%</span>
-                                                </div>
-                                                <span className={`text-[10px] text-${color}-500 pl-3.5`}>{p.sentiment || "Trend"} signal</span>
-                                            </li>
-                                        )})}
-                                    </ul>
-                                ) : candles.length >= 3 ? (() => {
-                                    // Fallback UI when ML patterns returns empty
-                                    const last3 = candles.slice(-3)
-                                    const patterns = []
-
-                                    // Bullish Engulfing
-                                    if (last3[1].close < last3[1].open && last3[2].open < last3[1].close && last3[2].close > last3[1].open) {
-                                        patterns.push({ name: "Bullish Engulfing", confidence: 91, color: "emerald", bias: "Bullish" })
-                                    }
-                                    // Bearish Engulfing
-                                    if (last3[1].close > last3[1].open && last3[2].open > last3[1].close && last3[2].close < last3[1].open) {
-                                        patterns.push({ name: "Bearish Engulfing", confidence: 88, color: "rose", bias: "Bearish" })
-                                    }
-                                    // Doji
-                                    const doji = last3[2]
-                                    if (Math.abs(doji.close - doji.open) / (doji.high - doji.low + 0.001) < 0.1) {
-                                        patterns.push({ name: "Near Doji (Low Vol)", confidence: 65, color: "amber", bias: "Reversal Consolidation" })
-                                    }
-
-                                    if (!patterns.length) {
-                                        return <div className="text-center p-4 border border-slate-800/60 rounded-lg bg-slate-900/30">
-                                            <Zap className="w-6 h-6 text-slate-600 mx-auto mb-2 opacity-50" />
-                                            <p className="text-slate-400 text-sm">Awaiting dynamic pattern formation.</p>
-                                        </div>
-                                    }
-
-                                    return (
+                            {/* Support & Resistance Tab */}
+                            <TabsContent value="support" className="flex-1 m-0 overflow-y-auto p-3">
+                                <Card className="border-[#1E222D] bg-[#0B0E11]">
+                                    <CardHeader className="pb-2 pt-3">
+                                        <CardTitle className="text-[10px] text-[#EF5350] font-bold uppercase tracking-widest flex items-center gap-2">
+                                            <Target className="w-4 h-4" /> Support & Resistance
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-3">
                                         <ul className="space-y-2">
-                                            {patterns.map((p, i) => (
-                                                <li key={i} className={`p-2.5 rounded-lg bg-slate-950/50 border border-slate-800`}>
-                                                    <div className="flex items-center justify-between text-sm">
-                                                        <span className="text-white font-medium flex items-center gap-1.5">
-                                                            <div className={`w-2 h-2 rounded-full bg-${p.color}-500`} />
-                                                            {p.name}
-                                                        </span>
-                                                        <span className={`font-mono text-xs text-${p.color}-400 font-bold`}>{p.confidence}%</span>
-                                                    </div>
-                                                    <span className={`text-[10px] text-${p.color}-500 pl-3.5`}>{p.bias} signal</span>
+                                            {sr.resistance.map((v, i) => (
+                                                <li key={`r${i}`} className="flex items-center justify-between p-2 rounded bg-[#161A1E] border border-[#EF5350]/20">
+                                                    <span className="text-[#EF5350] font-mono text-[10px] bg-[#EF5350]/15 px-2 py-0.5 rounded">R{i + 1}</span>
+                                                    <span className="text-white font-mono text-sm">₹{v.toFixed(2)}</span>
+                                                </li>
+                                            ))}
+                                            <li className="flex items-center justify-center py-1">
+                                                <span className="text-[10px] text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 rounded px-2 py-0.5">
+                                                    ▶ Current ₹{currentPrice.toFixed(2)}
+                                                </span>
+                                            </li>
+                                            {sr.support.map((v, i) => (
+                                                <li key={`s${i}`} className="flex items-center justify-between p-2 rounded bg-[#161A1E] border border-[#26A69A]/20">
+                                                    <span className="text-[#26A69A] font-mono text-[10px] bg-[#26A69A]/15 px-2 py-0.5 rounded">S{i + 1}</span>
+                                                    <span className="text-white font-mono text-sm">₹{v.toFixed(2)}</span>
                                                 </li>
                                             ))}
                                         </ul>
-                                    )
-                                })() : <p className="text-slate-500 text-sm">Waiting for data...</p>}
-                            </CardContent>
-                        </Card>
-
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 </div>
-
             </div>
         </ErrorBoundary>
     )

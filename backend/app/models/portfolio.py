@@ -45,4 +45,4 @@ class Position(Base):
     average_price = Column(Float, nullable=False, default=0)
     
     portfolio = relationship("Portfolio", backref="positions")
-    stock = relationship("Stock", backref="positions_ref")
+    stock = relationship("Stock", back_populates="positions")

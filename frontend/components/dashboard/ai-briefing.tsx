@@ -5,7 +5,7 @@ import { Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export function AIBriefing() {
+export function AIBriefing({ enhanced = false }: { enhanced?: boolean }) {
     const [briefing, setBriefing] = useState("");
     const [loading, setLoading] = useState(true);
 
@@ -17,19 +17,23 @@ export function AIBriefing() {
         }, 1500);
     }, []);
 
+    const textSizeClass = enhanced ? "text-base" : "text-sm";
+    const lineClamp = enhanced ? "line-clamp-none" : "line-clamp-4";
+
     return (
-        <Card className="border-indigo-500/30 bg-gradient-to-br from-indigo-900/20 to-slate-900/50 backdrop-blur-xl relative overflow-hidden group h-full flex flex-col">
-            <div className="absolute top-0 right-0 p-4 opacity-50 transition-opacity group-hover:opacity-100">
-                <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
+        <Card className="border-[#1E222D] bg-[#161A1E] backdrop-blur-sm relative overflow-hidden group h-full flex flex-col">
+            <div className="absolute top-0 right-0 p-4 opacity-30 transition-opacity group-hover:opacity-100">
+                <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
             </div>
 
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-indigo-300 flex items-center gap-2">
+            <CardHeader className="pb-2 pt-3 px-4 shrink-0">
+                <CardTitle className={`${textSizeClass} font-bold text-indigo-300 flex items-center gap-2`}>
+                    <span className="text-indigo-400">✦</span>
                     FinHQ Intelligence Briefing
                 </CardTitle>
             </CardHeader>
 
-            <CardContent className="flex-1 flex flex-col justify-between">
+            <CardContent className="flex-1 flex flex-col justify-between px-4 pb-4">
                 {loading ? (
                     <div className="space-y-2 mt-2">
                         <div className="h-4 bg-slate-800 rounded animate-pulse w-full"></div>
@@ -38,10 +42,10 @@ export function AIBriefing() {
                     </div>
                 ) : (
                     <>
-                        <p className="text-sm text-slate-300 leading-relaxed mt-2 line-clamp-4">
+                        <p className={`text-slate-300 leading-relaxed ${lineClamp} overflow-y-auto`}>
                             {briefing}
                         </p>
-                        <Link href="/news" className="text-xs text-indigo-400 flex items-center gap-1 font-medium hover:text-indigo-300 transition-colors mt-4">
+                        <Link href="/news" className="text-xs text-indigo-400 flex items-center gap-1 font-medium hover:text-indigo-300 transition-colors mt-2">
                             Read Full Analysis <ArrowRight className="w-3 h-3" />
                         </Link>
                     </>

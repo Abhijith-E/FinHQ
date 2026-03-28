@@ -11,14 +11,17 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-      - NEXT_PUBLIC_ML_SERVICE_URL=http://localhost:8001   # AI Pattern Detection
+      - NEXT_PUBLIC_ML_SERVICE_URL=http://localhost:8001
+      - NEXT_TELEMETRY_DISABLED=1
     depends_on:
       - backend
       - ml-service
     networks:
       - fintech_network
+    restart: unless-stopped
 
   # Backend - FastAPI (Core API)
   backend:
@@ -33,11 +36,15 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/fintech_db
       - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=fintech-super-secret-key-change-in-production-2026
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - fintech_network
+    restart: unless-stopped
 
   # ML Service - FastAPI (AI/ML) + Pattern Detection Engine
   ml-service:
@@ -56,10 +63,13 @@ services:
       - PATTERN_MODEL_PATH=/app/models/cnn_transformer_best.pt
       - YOLO_MODEL_PATH=/app/models/yolo_best.pt
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - fintech_network
+    restart: unless-stopped
 
   # Database - PostgreSQL with TimescaleDB
   db:
@@ -76,6 +86,11 @@ services:
     networks:
       - fintech_network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d fintech_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Caching & Queue - Redis
   redis:
@@ -88,6 +103,11 @@ services:
     networks:
       - fintech_network
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ML Experiment Tracking - MLflow
   mlflow:
@@ -103,7 +123,8 @@ services:
     volumes:
       - mlflow_data:/mlflow/artifacts
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - fintech_network
 
@@ -116,7 +137,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - fintech_network
 

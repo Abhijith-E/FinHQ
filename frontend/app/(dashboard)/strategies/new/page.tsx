@@ -39,7 +39,7 @@ export default function NewStrategyPage() {
     }
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
+        <div className="min-h-full flex-shrink-0 space-y-4 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-white mb-2">Strategy Builder</h2>

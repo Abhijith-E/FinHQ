@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from enum import Enum
 
@@ -31,15 +31,14 @@ class OrderCreate(OrderBase):
 
 # Properties shared by models stored in DB
 class OrderInDBBase(OrderBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     status: OrderStatus
     filled_avg_price: Optional[float] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
 
 # Properties to return to client
 class Order(OrderInDBBase):

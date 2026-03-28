@@ -266,10 +266,10 @@ export function TickerSearch({ value, onChange, className }: TickerSearchProps) 
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-64 justify-between bg-slate-800 border-slate-700 text-white hover:bg-slate-700 hover:text-white", className)}
+          className={cn("w-64 justify-between bg-[#0B0E11] border-[#1E222D] text-slate-300 hover:bg-[#161A1E] hover:text-white", className)}
         >
           <div className="flex items-center gap-2 overflow-hidden">
-            <Search className="h-4 w-4 shrink-0 opacity-50 text-indigo-400" />
+            <Search className="h-4 w-4 shrink-0 text-[#26A69A]" />
             <span className="truncate">
               {displayTicker(selectedItem.ticker)} {selectedItem.name ? `- ${selectedItem.name.split(" ")[0]}` : ""}
             </span>
@@ -277,26 +277,26 @@ export function TickerSearch({ value, onChange, className }: TickerSearchProps) 
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0 bg-slate-900 border-slate-700 text-white">
+      <PopoverContent className="w-64 p-0 bg-[#0B0E11] border-[#1E222D] text-white">
         <Command className="bg-transparent" shouldFilter={false}>
-          <CommandInput 
-            placeholder="Search Indian stocks..." 
-            className="text-white placeholder:text-slate-400 border-none focus:ring-0" 
+          <CommandInput
+            placeholder="Search Indian stocks..."
+            className="text-white placeholder:text-slate-500 bg-[#161A1E] border border-[#1E222D] focus:border-[#26A69A] focus:ring-0"
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
           {loading ? (
              <div className="p-4 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
-               <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+               <Loader2 className="h-4 w-4 animate-spin text-[#26A69A]" /> Searching...
              </div>
           ) : (
-             <CommandEmpty className="py-4 text-center text-sm text-slate-400">
+             <CommandEmpty className="py-4 text-center text-sm text-slate-500">
                No stocks found. 
                <div className="mt-2">
-                 <Button 
-                    size="sm" 
+                 <Button
+                    size="sm"
                     variant="secondary"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="bg-[#161A1E] border border-[#1E222D] text-slate-300 hover:bg-[#161A1E] hover:text-white"
                     onClick={() => handleSelect(parseInputTicker(searchQuery))}
                  >
                     Add "{searchQuery.toUpperCase()}"
@@ -311,11 +311,11 @@ export function TickerSearch({ value, onChange, className }: TickerSearchProps) 
                 key={stock.ticker}
                 value={stock.ticker}
                 onSelect={() => handleSelect(stock.ticker)}
-                className="text-slate-300 hover:text-white cursor-pointer aria-selected:bg-slate-800"
+                className="text-slate-300 hover:text-white hover:bg-[#161A1E] cursor-pointer aria-selected:bg-[#161A1E]"
               >
                 <Check
                   className={cn(
-                    "mr-2 h-4 w-4 text-indigo-500",
+                    "mr-2 h-4 w-4 text-[#26A69A]",
                     value === stock.ticker ? "opacity-100" : "opacity-0"
                   )}
                 />
