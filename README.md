@@ -181,6 +181,82 @@ Detailed information on security practices, vulnerability reporting, and data pr
 
 ---
 
+---
+
+# 📸 Application Screenshots
+
+Explore the core modules and interface of the platform.
+
+## 🔐 Authentication & User Onboarding
+
+| Login | Registration |
+|---|---|
+| ![](docs-screenshots/01-login-page.png) | ![](docs-screenshots/02-user-registration-details.png) |
+
+| Password Setup | Profile Preferences |
+|---|---|
+| ![](docs-screenshots/03-password-setup.png) | ![](docs-screenshots/04-profile-type-selection.png) |
+
+---
+
+## 📊 Dashboard & Portfolio Management
+
+| Dashboard Overview | Portfolio Management |
+|---|---|
+| ![](docs-screenshots/05-dashboard-overview.png) | ![](docs-screenshots/06-portfolio-management.png) |
+
+---
+
+## 📈 Market Analysis & Trading Intelligence
+
+| Technical Analysis | Fundamental Analysis |
+|---|---|
+| ![](docs-screenshots/07-technical-analysis.png) | ![](docs-screenshots/08-fundamental-analysis.png) |
+
+| Market News Feed | Trade Execution Panel |
+|---|---|
+| ![](docs-screenshots/09-market-news-feed.png) | ![](docs-screenshots/10-trade-execution-panel.png) |
+
+---
+
+## 🤖 AI Strategies & Backtesting
+
+| Trading Strategies | Strategy Backtesting |
+|---|---|
+| ![](docs-screenshots/11-trading-strategies.png) | ![](docs-screenshots/12-strategy-backtesting.png) |
+
+---
+
+## 🛡️ Risk Monitoring & Alerts
+
+| Risk Management System | Smart Price Alerts |
+|---|---|
+| ![](docs-screenshots/13-risk-management-system.png) | ![](docs-screenshots/14-price-alerts.png) |
+
+---
+
+## 🌐 Community & Learning Ecosystem
+
+| Community Hub | Learning Center |
+|---|---|
+| ![](docs-screenshots/15-community-hub.png) | ![](docs-screenshots/16-learning-center.png) |
+
+---
+
+## 🚀 Platform Highlights
+
+- AI-powered investment analytics
+- Real-time market monitoring
+- Technical & fundamental analysis tools
+- Smart portfolio management
+- Automated trading strategy evaluation
+- Integrated backtesting engine
+- Risk assessment & alert system
+- Community-driven investment ecosystem
+- Interactive financial learning center
+
+---
+
 ## 🔮 Future Scope
 
 The following capabilities are planned for future releases:
