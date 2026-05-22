@@ -1,35 +1,4 @@
-<img width="1470" height="830" alt="01-authentication-login" src="https://github.com/user-attachments/assets/a154566f-3d89-4843-95da-eaa65876410c" />
-<div align="center">
 
-<br />
-
-<img src="https://img.shields.io/badge/FinHQ-0ea5e9?style=for-the-badge&logo=chart.js&logoColor=white" alt="FinHQ" height="42" />
-
-<h1>FinHQ</h1>
-
-<p><strong>Institutional-grade financial analytics, democratized for every retail investor.</strong></p>
-
-<p>
-  <img src="https://img.shields.io/badge/Status-Simulation_Platform-22c55e?style=flat-square" />
-  <img src="https://img.shields.io/badge/Frontend-Next.js_+_TypeScript-000000?style=flat-square&logo=nextdotjs" />
-  <img src="https://img.shields.io/badge/Backend-FastAPI_+_Python-009688?style=flat-square&logo=fastapi" />
-  <img src="https://img.shields.io/badge/ML-PyTorch_%2F_TensorFlow-EE4C2C?style=flat-square&logo=pytorch" />
-  <img src="https://img.shields.io/badge/Database-PostgreSQL_+_TimescaleDB-336791?style=flat-square&logo=postgresql" />
-  <img src="https://img.shields.io/badge/Infra-Docker_Compose-2496ED?style=flat-square&logo=docker" />
-</p>
-
-<p>
-  <a href="#-about">About</a> ·
-  <a href="#-key-features">Features</a> ·
-  <a href="#-system-architecture">Architecture</a> ·
-  <a href="#-tech-stack">Tech Stack</a> ·
-  <a href="#-getting-started">Getting Started</a> ·
-  <a href="#-future-scope">Roadmap</a>
-</p>
-
-<br />
-
-</div>
 
 ---
 
