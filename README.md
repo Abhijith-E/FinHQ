@@ -141,7 +141,7 @@ Ensure you have the following installed before proceeding:
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/YourUsername/FinHQ.git
+git clone https://github.com/Abhijith-E/FinHQ.git
 cd FinHQ
 ```
 
